@@ -147,29 +147,29 @@ or width of the right side window."
   :type 'alist
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-top-alist nil
-  "Custom window alist for top side windows.
+(defcustom auto-side-windows-top-alist '((window-height . (lambda (win) (fit-window-to-buffer win 0.5 5))))
+  "Custom alist for top side windows.
 This alist contains display properties which will be applied 
 when displaying buffers in the top side window."
   :type 'alist
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-bottom-alist nil
-  "Custom window alist for bottom side windows.
+  "Custom alist for bottom side windows.
 This alist contains display properties which will be applied 
 when displaying buffers in the bottom side window."
   :type 'alist
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-left-alist nil
-  "Custom window alist for left side windows.
+  "Custom alist for left side windows.
 This alist contains display properties which will be applied 
 when displaying buffers in the left side window."
   :type 'alist
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-right-alist nil
-  "Custom window parameters for right side windows.
+(defcustom auto-side-windows-right-alist '((window-width . 80))
+  "Custom alist for right side windows.
 This alist contains display properties which will be applied 
 when displaying buffers in the right side window."
   :type 'alist
@@ -185,7 +185,7 @@ These parameters will be applied to all side windows created by
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-common-alist '((dedicated . t))
-  "Custom window parameters for all side windows.
+  "Custom alist for all side windows.
 These parameters will be applied to all side windows created by 
 `auto-side-windows-mode`."
   :type 'alist
