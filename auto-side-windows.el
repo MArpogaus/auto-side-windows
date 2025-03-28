@@ -147,7 +147,7 @@ or width of the right side window."
   :type 'alist
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-top-alist '((window-height . (lambda (win) (fit-window-to-buffer win 0.5 5))))
+(defcustom auto-side-windows-top-alist '((window-height . (lambda (win) (fit-window-to-buffer win 20 5))))
   "Custom alist for top side windows.
 This alist contains display properties which will be applied
 when displaying buffers in the top side window."
