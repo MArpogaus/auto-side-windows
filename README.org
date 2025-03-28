@@ -1,0 +1,172 @@
+# Inspired by: https://github.com/othneildrew/Best-README-Template
+#+OPTIONS: toc:nil
+
+[[https://github.com/MArpogaus/auto-tab-groups/graphs/contributors][https://img.shields.io/github/contributors/MArpogaus/auto-tab-groups.svg?style=flat-square]]
+[[https://github.com/MArpogaus/auto-tab-groups/network/members][https://img.shields.io/github/forks/MArpogaus/auto-tab-groups.svg?style=flat-square]]
+[[https://github.com/MArpogaus/auto-tab-groups/stargazers][https://img.shields.io/github/stars/MArpogaus/auto-tab-groups.svg?style=flat-square]]
+[[https://github.com/MArpogaus/auto-tab-groups/issues][https://img.shields.io/github/issues/MArpogaus/auto-tab-groups.svg?style=flat-square]]
+[[https://github.com/MArpogaus/auto-tab-groups/blob/main/LICENSE][https://img.shields.io/github/license/MArpogaus/auto-tab-groups.svg?style=flat-square]]
+[[https://linkedin.com/in/MArpogaus][https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555]]
+
+* auto-side-windows :TOC_3_gh:noexport:
+  - [[#about-the-project][About The Project]]
+  - [[#getting-started][Getting Started]]
+    - [[#prerequisites][Prerequisites]]
+    - [[#example-configuration][Example Configuration]]
+  - [[#usage][Usage]]
+  - [[#customization][Customization]]
+  - [[#commands][Commands]]
+  - [[#recommended-configurations][Recommended Configurations]]
+  - [[#contributions][Contributions]]
+  - [[#license][License]]
+  - [[#contact][Contact]]
+
+** About The Project
+
+The `auto-side-windows` package simplifies buffer management in Emacs by allowing users to define custom rules for buffers. Users can specify buffer names or major modes for buffers that should automatically be opened as side windows on a designated side (top, bottom, left, or right). This enhances the workflow by organizing related buffers visually, making navigation easier and more intuitive.
+
+** Getting Started
+
+*** Prerequisites
+
+- Emacs 30.1 or later.
+
+*** Example Configuration
+
+Here’s an example configuration using `use-package`:
+
+#+begin_src emacs-lisp
+  (use-package auto-side-windows
+    :ensure t
+    :load-path "/path/to/auto-side-windows/"
+    :custom
+    ;; Top side window configurations
+    (setq auto-side-windows-top-buffer-names
+     '("^\\*Backtrace\\*$"
+       "^\\*Compile-Log\\*$"
+       "^COMMIT_EDITMSG$"
+       "^\\*Org Src.*\\*"
+       "^\\*Agenda Commands\\*$"
+       "^\\*Org Agenda\\*$"
+       "^\\*Quick Help\\*$"
+       "^\\*Multiple Choice Help\\*$"
+       "^\\*TeX Help\\*$"
+       "^\\*TeX errors\\*$"
+       "^\\*Warnings\\*$"
+       "^\\*diff-hl\\*$"
+       "^\\*Process List\\*$"))
+    (setq auto-side-windows-top-buffer-modes
+     '(flymake-diagnostics-buffer-mode
+       locate-mode
+       occur-mode
+       grep-mode
+       xref--xref-buffer-mode))
+
+    ;; Bottom side window configurations
+    (setq auto-side-windows-bottom-buffer-names
+     '("^\\*.*eshell.*\\*$"
+       "^\\*.*shell.*\\*$"
+       "^\\*.*term.*\\*$"
+       "^\\*.*vterm.*\\*$"))
+    (setq auto-side-windows-bottom-buffer-modes
+     '(eshell-mode
+       shell-mode
+       term-mode
+       vterm-mode
+       comint-mode
+       debugger-mode))
+
+    ;; Right side window configurations
+    (setq auto-side-windows-right-buffer-names
+     '("^\\*eldoc.*\\*$"
+       "^\\*info\\*$"
+       "^\\*Metahelp\\*$"))
+    (setq auto-side-windows-right-buffer-modes
+     '(Info-mode
+       TeX-output-mode
+       pdf-view-mode
+       eldoc-mode
+       help-mode
+       helpful-mode
+       shortdoc-mode))
+
+    ;; Custom window parameters
+    (auto-side-windows-top-window-parameters '((mode-line-format . none)))
+
+    ;; Window sides slots
+    (window-sides-slots '(2 1 2 2)) ; maximum number of side windows on the left, top, right and bottom
+    :bind
+    (:map auto-side-windows-mode-map
+          ("C-c w t" . auto-side-windows-display-buffer-top)
+          ("C-c w b" . auto-side-windows-display-buffer-bottom)
+          ("C-c w l" . auto-side-windows-display-buffer-left)
+          ("C-c w r" . auto-side-windows-display-buffer-right)
+          ("C-c w T" . auto-side-windows-toggle-side-window))
+    :hook
+    (after-init . auto-side-windows-mode))
+#+end_src
+
+** Usage
+
+When the package is active, it will manage the opening of buffers according to the user-defined rules. Buffers matching a defined name or major mode will appear in the specified side window, enhancing your Emacs experience.
+
+** Customization
+
+| Option                                     | Type  | Description                                                                      |
+|--------------------------------------------+-------+----------------------------------------------------------------------------------|
+| auto-side-windows-top-buffer-names         | list  | A list of buffer names that should be opened in a top side window.               |
+| auto-side-windows-bottom-buffer-names      | list  | A list of buffer names that should be opened in a bottom side window.            |
+| auto-side-windows-left-buffer-names        | list  | A list of buffer names that should be opened in a left side window.              |
+| auto-side-windows-right-buffer-names       | list  | A list of buffer names that should be opened in a right side window.             |
+| auto-side-windows-top-buffer-modes         | list  | A list of major modes for buffers that should be opened in a top side window.    |
+| auto-side-windows-bottom-buffer-modes      | list  | A list of major modes for buffers that should be opened in a bottom side window. |
+| auto-side-windows-left-buffer-modes        | list  | A list of major modes for buffers that should be opened in a left side window.   |
+| auto-side-windows-right-buffer-modes       | list  | A list of major modes for buffers that should be opened in a right side window.  |
+| auto-side-windows-top-window-parameters    | plist | Custom window parameters for top side windows.                                   |
+| auto-side-windows-bottom-window-parameters | plist | Custom window parameters for bottom side windows.                                |
+| auto-side-windows-left-window-parameters   | plist | Custom window parameters for left side windows.                                  |
+| auto-side-windows-right-window-parameters  | plist | Custom window parameters for right side windows.                                 |
+
+** Commands
+
+The package provides the following commands:
+
+- =auto-side-windows-mode=: Toggle the automatic management of side windows. When enabled, it will handle buffer placement according to the rules defined in the customization variables.
+- =auto-side-windows-toggle-side-window=: A command to toggle the visibility of the side window.
+- =auto-side-windows-display-buffer-top=: Manually display the current buffer in a top side window.
+- =auto-side-windows-display-buffer-bottom=: Manually display the current buffer in a bottom side window.
+- =auto-side-windows-display-buffer-left=: Manually display the current buffer in a left side window.
+- =auto-side-windows-display-buffer-right=: Manually display the current buffer in a right side window.
+
+** Recommended Configurations
+
+To further enhance the Emacs experience with =auto-side-windows=, consider adding these configurations:
+
+#+begin_src emacs-lisp
+  ;; Org mode: Ensure agenda buffers open in the top side window for easy access
+  (setq org-agenda-window-setup 'current-window)
+  (add-to-list 'auto-side-windows-top-buffer-names "^\\*Org Agenda\\*$")
+
+  ;; Magit: Display Magit status in the right side window
+  (setq magit-display-buffer-function #'display-buffer)
+  (add-to-list 'auto-side-windows-right-buffer-modes 'magit-mode)
+  (add-to-list 'auto-side-windows-right-buffer-names "^magit:.*")
+#+end_src
+
+These configurations integrate well with =auto-side-windows= and enhance buffer management for specific use cases in Emacs.
+
+** Contributions
+
+Contributions to the =auto-side-windows= package are greatly appreciated! Feel free to submit issues or pull requests on GitHub.
+
+** License
+
+Distributed under the [[file:COPYING][GPLv3]] License.
+
+** Contact
+
+[[https://github.com/MArpogaus/][Marcel Arpogaus]] - [[mailto:znepry.necbtnhf@tznvy.pbz][znepry.necbtnhf@tznvy.pbz]] (encrypted with [ROT13](https://rot13.com/))
+
+Project Link:
+[[https://github.com/MArpogaus/auto-tab-groups]]
+
