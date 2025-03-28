@@ -245,9 +245,9 @@ additional conditions to refine the matching process."
 
 (defun auto-side-windows--get-buffer-side (buffer &optional args)
   "Determine which side BUFFER should be displayed in.
-This function checks the buffer against user-defined conditions
-relative to the side windows. It returns 'top, 'bottom, 'left, or 'right,
-or nil if no conditions are met.
+This function checks the buffer against user-defined conditions relative to the
+side windows. It returns `'top', `'bottom', `'left', or `'right',or nil if no
+conditions are met.
 Optional ARGS may contain a category (New in Emacs>30.1)."
   (cond
    ((buffer-match-p `(and (not ,@(append auto-side-windows-left-extra-conditions
