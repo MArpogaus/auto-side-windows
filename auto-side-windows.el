@@ -296,13 +296,14 @@ Optional ARGS may contain a category (New in Emacs>30.1)."
   "Return the next free slot number for SIDE.
 Each side window can have multiple slots numbered from 0 to
 MAX-SLOTS-1. This function finds and returns the next available
-slot number for use."
+slot number for use.
+If no free slot is found return MAX-SLOTS-1."
   (let* ((max-slots (nth (cond ((eq side 'left) 0)
                                ((eq side 'top) 1)
                                ((eq side 'right) 2)
                                ((eq side 'bottom) 3))
                          window-sides-slots))
-         used-slots next-slot)
+         used-slots)
     ;; Collect used slots
     (dolist (win (window-list))
       (when (equal (window-parameter win 'window-side) side)
@@ -310,10 +311,11 @@ slot number for use."
           (setq used-slots (cons slot used-slots)))))
 
     ;; Find the next free slot
-    (catch 'next-slot
-      (dotimes (i max-slots)
-        (unless (member i used-slots)
-          (throw 'next-slot i))))))
+    (if-let ((next-slot (catch 'next-slot
+                          (dotimes (i max-slots)
+                            (unless (member i used-slots)
+                              (throw 'next-slot i))))))
+        next-slot (1- max-slots))))
 
 (defun auto-side-windows--display-buffer (buffer alist)
   "Custom display buffer function for `auto-side-windows-mode'.
