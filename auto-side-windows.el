@@ -334,11 +334,12 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
                              `((side . ,side)
                                (slot . ,slot)
                                (window-parameters . ,window-params)))))
-    (run-hooks 'auto-side-windows-before-display-hook)
-    (unless (when (alist-get side auto-side-windows-reuse-mode-window)
-              (display-buffer-reuse-mode-window buffer alist))
-      (display-buffer-in-side-window buffer alist))
-    (run-hooks 'auto-side-windows-after-display-hook)))
+    (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
+    (let ((window (unless (when (alist-get side auto-side-windows-reuse-mode-window)
+                            (display-buffer-reuse-mode-window buffer alist))
+                    (display-buffer-in-side-window buffer alist))))
+      (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
+      window)))
 
 ;; Commands
 
@@ -350,10 +351,10 @@ the window. If not, the buffer will be displayed in a side window.
 Before toggling the buffer, it runs `auto-side-windows-before-toggle-hook'.
 After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
   (interactive)
-  (run-hooks 'auto-side-windows-before-toggle-hook)
   (let ((window (selected-window))
         (buf (current-buffer)))
     (with-selected-window window
+      (run-hook-with-args 'auto-side-windows-before-toggle-hook buf)
       (cond
        ((window-parameter window 'window-side)
         (progn
@@ -368,8 +369,8 @@ After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
           (switch-to-prev-buffer window 'bury)
           (display-buffer buf)))
        (t
-        (error "Not a side window")))))
-  (run-hooks 'auto-side-windows-after-toggle-hook))
+        (error "Not a side window")))
+      (run-hook-with-args 'auto-side-windows-after-toggle-hook buf))))
 
 (defun auto-side-windows-display-buffer-on-side (side)
   "Display the current buffer in a window on SIDE.
@@ -379,13 +380,11 @@ and `auto-side-windows-after-display-hook` after."
   (interactive (list (intern (completing-read "Select side: " '("left" "right" "top" "bottom")))))
   (let ((buf (current-buffer))
         (alist `(nil . ((category . ,(intern (concat "force-side-" (symbol-name side))))))))
-    (run-hooks 'auto-side-windows-before-display-hook)
     (if-let* ((window (selected-window))
               (window-side (window-parameter window 'window-side)))
         (delete-window window)
       (switch-to-prev-buffer window 'bury))
-    (display-buffer buf alist)
-    (run-hooks 'auto-side-windows-after-display-hook)))
+    (display-buffer buf alist)))
 
 (defun auto-side-windows-display-buffer-top ()
   "Display the current buffer in a top side window."
