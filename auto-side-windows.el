@@ -23,14 +23,12 @@
 ;; buffers explicitly in one of the four sides manually.
 
 ;;; Code:
-
 (defgroup auto-side-windows nil
   "Automatically manage buffer display in side windows."
   :group 'windows
   :prefix "auto-side-windows-")
 
-;; Customization Variables
-
+;;;; Customization Variables
 (defcustom auto-side-windows-top-buffer-names nil
   "List of buffer name regexps to be displayed in top side windows.
 Each regexp is used to match buffer names. When a buffer's name
@@ -225,14 +223,12 @@ after the toggle action of a buffer in a side window."
   :type 'hook
   :group 'auto-side-windows)
 
-;; Internal Variables
-
+;;;; Internal Variables
 (defvar auto-side-windows--side-window-functions nil
   "List of functions added to `display-buffer-alist' by `auto-side-windows-mode'.
 These functions determine how buffers are displayed in side windows.")
 
-;; Helper Functions
-
+;;;; Helper Functions
 (defun auto-side-windows--buffer-match-condition (majormodes &optional buffernames extra-conds)
   "Get condition to match buffers with given MAJORMODES or BUFFERNAMES.
 MAJORMODES are the major modes to match, while BUFFERNAMES
@@ -343,8 +339,7 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
       (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
       window)))
 
-;; Commands
-
+;;;; Commands
 (defun auto-side-windows-toggle-side-window nil
   "Toggle the current buffer as a side window.
 If the current window is already a side window, it will delete
@@ -408,7 +403,7 @@ and `auto-side-windows-after-display-hook` after."
   (interactive)
   (auto-side-windows-display-buffer-on-side 'right))
 
-;; Minor Mode
+;;;; Minor Mode
 ;;;###autoload
 (define-minor-mode auto-side-windows-mode
   "Toggle automatic side window management based on buffer rules.
