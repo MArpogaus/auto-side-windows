@@ -206,6 +206,28 @@ You can configure [[https://github.com/karthink/popper][Popper]] to manage the s
 
 With this setup, you can use Popper commands (like =popper-toggle= or =popper-cycle=) to quickly hide/show/cycle through the side windows managed by =auto-side-windows=.
 
+Additionally, the following custom command allows you to switch to arbitrary buried popup buffers:
+
+#+begin_src emacs-lisp
+  (defun my/popper-switch-to-buried-buffer (buffer)
+    "Switch to buried popup BUFFER."
+    (interactive
+     (list
+      (when-let ((buried-popups (progn (popper--find-buried-popups)
+                                       (mapcar #'cdr
+                                               (alist-get (funcall popper-group-function)
+                                                          popper-buried-popup-alist nil nil 'equal))))
+                 (pred (lambda (b)
+                         (if (consp b) (setq b (car b)))
+                         (setq b (get-buffer b))
+                         (member b buried-popups))))
+        (read-buffer "Switch to popup: " nil t pred))))
+    (if buffer (display-buffer buffer)
+      (message "No buried popups.")))
+    #+end_src
+
+Just add it to the =:preface= section of the above =use-package= declaration and optionally bind it to a key.
+
 *** Ace Window Integration
 
 [[https://github.com/abo-abo/ace-window][Ace Window]] can serve as a fallback mechanism for selecting a window when =display-buffer= doesn't find a suitable existing window or rule (including those from =auto-side-windows=).
