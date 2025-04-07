@@ -22,11 +22,12 @@
   - [[#integration-with-other-packages][Integration with Other Packages]]
     - [[#popper-integration][Popper Integration]]
     - [[#ace-window-integration][Ace Window Integration]]
-  - [[#recommended-configurations][Recommended Configurations]]
+    - [[#enhancing-magit-and-org-mode-compatibility][Enhancing =magit= and =org-mode= compatibility]]
   - [[#comparison-with-other-packages][Comparison with Other Packages]]
     - [[#shackle][Shackle]]
     - [[#popper][Popper]]
     - [[#core-emacs-display-buffer-alist][Core Emacs (=display-buffer-alist=)]]
+  - [[#bonus-boxes-around-top-windows][Bonus: Boxes around top windows]]
   - [[#contributions][Contributions]]
   - [[#license][License]]
   - [[#contact][Contact]]
@@ -122,6 +123,15 @@ Here’s an example configuration using =use-package=:
     ;; Maximum number of side windows on the left, top, right and bottom
     (window-sides-slots '(1 1 1 1)) ; Example: Allow one window per side
 
+    ;; Force left and right side windows to occupy full frame height
+    (window-sides-vertical t)
+
+    ;; Make changes to tab-/header- and mode-line-format persistent when toggleling windows visibility
+    (window-persistent-parameters
+     (append window-persistent-parameters
+             '((tab-line-format . t)
+               (header-line-format . t)
+               (mode-line-format . t))))
     :bind ;; Example keybindings (adjust prefix as needed)
     (:map global-map ; Or your preferred keymap prefix
           ("C-c w t" . auto-side-windows-display-buffer-top)
@@ -212,19 +222,32 @@ Modify =display-buffer-base-action= to include =ace-display-buffer=. This tells 
 
 Now, if a command tries to display a buffer and no =auto-side-windows= rule applies and standard reuse fails, =ace-display-buffer= will trigger, letting you pick the window.
 
-** Recommended Configurations
+*** Enhancing =magit= and =org-mode= compatibility
 
 To further enhance the Emacs experience with =auto-side-windows=, consider adding these configurations:
 
 #+begin_src emacs-lisp
   ;; Org mode: Ensure agenda buffers open in the top side window for easy access
-  (setq org-agenda-window-setup 'current-window)
-  (add-to-list 'auto-side-windows-top-buffer-names "^\\*Org Agenda\\*$")
+  (setopt org-src-window-setup 'plain)
+  (setopt auto-side-windows-top-buffer-names '("^\\*Org Agenda\\*$"
+                                               "^\\*Org Src.*\\*"
+                                               "^\\*Org-Babel Error Output\\*"
+                                               ...)))
 
-  ;; Magit: Display Magit status in the right side window
-  (setq magit-display-buffer-function #'display-buffer)
-  (add-to-list 'auto-side-windows-right-buffer-modes 'magit-mode)
-  (add-to-list 'auto-side-windows-right-buffer-names "^magit:.*")
+  ;; Magit: Display Magit diff/status in the right side window, edit commit msg on top
+  (setopt magit-display-buffer-function #'display-buffer
+          magit-commit-diff-inhibit-same-window t)
+  (setopt auto-side-windows-right-buffer-names '("^magit-diff:.*$"
+                                                 "^magit-process:.*$"
+                                                 ...))
+  (setopt auto-side-windows-right-buffer-modes '(magit-status-mode
+                                                 magit-log-mode
+                                                 magit-diff-mode
+                                                 magit-process-mode
+                                                 ...))
+  (setopt auto-side-windows-top-buffer-names
+          '("^COMMIT_EDITMSG$"
+            ...))
 #+end_src
 
 These configurations integrate well with =auto-side-windows= and enhance buffer management for specific use cases in Emacs.
@@ -247,6 +270,74 @@ While several packages address window management, =auto-side-windows= has a spec
 Emacs' built-in =display-buffer-alist= is the underlying mechanism for controlling buffer display. It's extremely powerful but requires writing potentially complex alist structures.
 
 *Difference:* =auto-side-windows= acts as a configuration layer *on top of* =display-buffer-alist=. It generates the necessary alist entries for side window rules based on user-friendly customization variables, reducing the need to write the raw alist entries manually for this common pattern.
+
+** Bonus: Boxes around top windows
+
+Inspired by [[https://www.reddit.com/r/emacs/comments/1hoehaa/boxes_everywhere/][u/Nicolas-Rougier's post]], you can add customized header lines to side windows for better visual distinction.
+To resemble the example shown in the screenshot add this to your configuration:
+
+#+begin_src emacs-lisp
+  (use-package auto-side-windows
+    :ensure (:host github :repo "MArpogaus/auto-side-windows")
+    :preface
+    (defun my/get-header-line-icon-for-buffer (buffer)
+      (with-current-buffer buffer
+        (unless (boundp 'header-line-icon)
+          (setq-local header-line-icon
+                      (cond
+                       ((buffer-match-p "Warning" buffer) '("  !  " . warning))
+                       ((buffer-match-p '(or "^\\*Backtrace\\*$" ".*[Ee]rror.*") buffer) '("  !  " . error))
+                       ((buffer-match-p '(or "^COMMIT_EDITMSG$" "^\\*diff-hl\\*$") buffer) '("    " . success))
+                       ((buffer-match-p "^\\*Org Src.*\\*" buffer) '("     " . mode-line-emphasis))
+                       ((buffer-match-p "^\\*Org Agenda\\*$" buffer) '("    " . mode-line-emphasis))
+                       (t '("  ?  " . mode-line-emphasis)))))
+        header-line-icon))
+    (defun my/install-top-side-window-face-remaps (buffer foreground background)
+      (with-current-buffer buffer
+        (unless (bound-and-true-p top-side-window-face-remaps-cookies)
+          (setq-local top-side-window-face-remaps-cookies
+                      (list
+                       (face-remap-add-relative 'header-line
+                                                `(:box nil :underline nil :overline ,background))
+                       (face-remap-add-relative 'fringe
+                                                `(:background ,background))
+                       (face-remap-add-relative 'mode-line-active
+                                                `(:overline ,background :underline nil :height 0))
+                       (face-remap-add-relative 'mode-line-inactive
+                                                `(:overline ,background :underline nil :height 0))
+                       )))))
+    (defvar my/header-line-format-top
+      '(:eval
+        (let*
+            ((buffer (current-buffer))
+             (prefix-and-face (my/get-header-line-icon-for-buffer buffer))
+             (prefix (car prefix-and-face))
+             (background (face-foreground (cdr prefix-and-face)))
+             (foreground (face-background (cdr prefix-and-face) nil 'default))
+             (prefix-face `((t :inherit bold :background ,background :foreground ,foreground)))
+             (buffer-face `((t :inherit bold :foreground ,background))))
+          (set-window-fringes nil 1 1 t)
+          ;; (set-window-margins nil 1 1)
+          (my/install-top-side-window-face-remaps buffer foreground background)
+          (list
+           (propertize prefix 'face prefix-face 'display '(space-width 0.7))
+           (propertize (format-mode-line " %b ") 'face buffer-face)
+           (propertize " " 'display `(space :align-to right))
+           (propertize " " 'face prefix-face 'display '(space-width 1))))))
+    :custom
+    ;; Draw boxes around top side windows
+    (auto-side-windows-top-window-parameters `((mode-line-format . t)
+                                               (header-line-format . ,my/header-line-format-top)))
+    (auto-side-windows-before-display-hook '((lambda (buffer)
+                                               (with-current-buffer buffer
+                                                 (when (bound-and-true-p top-side-window-face-remaps-cookies)
+                                                   (dolist (cookie top-side-window-face-remaps-cookies)
+                                                     (face-remap-remove-relative cookie))
+                                                   (kill-local-variable 'top-side-window-face-remaps-cookies))))))
+    (auto-side-windows-before-toggle-hook auto-side-windows-before-display-hook))
+#+end_src
+
+*Note:* Complex face remapping in header lines might have side effects (e.g., affecting Corfu popup fringes).
 
 ** Contributions
 
