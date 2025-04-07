@@ -279,7 +279,7 @@ These configurations integrate well with =auto-side-windows= and enhance buffer 
 While several packages address window management, =auto-side-windows= has a specific focus:
 
 *** Shackle
-[[https://github.com/alphapapa/shackle][Shackle]] is a powerful package for finely controlling how and where popup windows appear, including options for creating new frames or specifying precise window parameters. It's very flexible and can involve more complex rule definitions.
+[[https://depp.brause.cc/shackle/][Shackle]] is a powerful package for finely controlling how and where popup windows appear, including options for creating new frames or specifying precise window parameters. It's very flexible and can involve more complex rule definitions.
 
 *Difference:* =auto-side-windows= focuses *specifically* on simplifying the common use case of assigning buffers to *side windows* within the *current frame* based on simple name/mode matching, acting as a high-level interface to =display-buffer-alist= for this purpose.
 
