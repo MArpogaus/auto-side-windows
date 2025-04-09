@@ -335,8 +335,11 @@ If no free slot is found return MAX-SLOTS-1."
 (defun auto-side-windows--display-buffer (buffer alist)
   "Custom display buffer function for `auto-side-windows-mode'.
 BUFFER is the buffer to display and ALIST contains display parameters.
+
 This function determines the appropriate side for the buffer and tries to
-displays it in the next free slot.
+displays BUFFER in the next free side window slot.
+If the BUFFER is already displayed in an existing window it is reused, even
+if not a side window.
 
 If `auto-side-windows-reuse-mode-window' is `t' for the side the first side
 window containing a buffer with the same major mode is used.
@@ -356,7 +359,8 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
                                (slot . ,slot)
                                (window-parameters . ,window-params)))))
     (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
-    (let ((window (display-buffer-in-side-window buffer alist)))
+    (let ((window (or (get-buffer-window buffer nil)
+                      (display-buffer-in-side-window buffer alist))))
       (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
       window)))
 
