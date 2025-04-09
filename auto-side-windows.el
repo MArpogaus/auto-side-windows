@@ -288,41 +288,56 @@ Optional ARGS may contain a category (New in Emacs>30.1)."
     'right)
    (t nil)))
 
-(defun auto-side-windows--get-next-free-slot (side)
+(defun auto-side-windows--get-next-free-slot (side buffer)
   "Return the next free slot number for SIDE.
-Each side window can have multiple slots numbered from 0 to
-MAX-SLOTS-1. This function finds and returns the next available
-slot number for use.
+Each side window can have multiple slots numbered from 0 to MAX-SLOTS-1.
+This function finds and returns the next available slot number for use.
+
+If `auto-side-windows-reuse-mode-window' is `t' for SIDE, return the slot number
+of the first side window containing a buffer with the same major mode as BUFFER.
+
 If no free slot is found return MAX-SLOTS-1."
   (let* ((max-slots (nth (cond ((eq side 'left) 0)
                                ((eq side 'top) 1)
                                ((eq side 'right) 2)
                                ((eq side 'bottom) 3))
                          window-sides-slots))
+         (buffer-mode (with-current-buffer buffer major-mode))
+         (major-mode-slot max-slots)
          used-slots)
     ;; Collect used slots
     (dolist (win (window-list))
       (when (equal (window-parameter win 'window-side) side)
         (when-let ((slot (window-parameter win 'window-slot)))
-          (setq used-slots (cons slot used-slots)))))
+          (push slot used-slots) ;; collect all used slots
+          ;; when reused mode window is enabled for this side
+          ;; use the first used slot with a derived major mode
+          (when (and (alist-get side auto-side-windows-reuse-mode-window)
+                     (equal buffer-mode (with-selected-window win major-mode)))
+            (setq major-mode-slot (min major-mode-slot slot))))))
 
     ;; Find the next free slot
-    (if-let ((next-slot (catch 'next-slot
-                          (dotimes (i max-slots)
-                            (unless (member i used-slots)
-                              (throw 'next-slot i))))))
+    (if-let ((next-slot (if (< major-mode-slot max-slots) major-mode-slot
+                          (catch 'next-slot
+                            (dotimes (i max-slots)
+                              (unless (member i used-slots)
+                                (throw 'next-slot i)))))))
         next-slot (1- max-slots))))
 
 (defun auto-side-windows--display-buffer (buffer alist)
   "Custom display buffer function for `auto-side-windows-mode'.
 BUFFER is the buffer to display and ALIST contains display parameters.
-This function determines the appropriate side for the buffer and
-displays it in the selected side window if conditions are met.
+This function determines the appropriate side for the buffer and tries to
+displays it in the next free slot.
+
+If `auto-side-windows-reuse-mode-window' is `t' for the side the first side
+window containing a buffer with the same major mode is used.
+If no free slot is found, the largest allowed slot number is used.
 
 Before displaying the buffer, it runs `auto-side-windows-before-display-hook'.
 After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
   (when-let* ((side (auto-side-windows--get-buffer-side buffer `(nil . ,alist)))
-              (slot (auto-side-windows--get-next-free-slot side))
+              (slot (auto-side-windows--get-next-free-slot side buffer))
               (window-params (append auto-side-windows-common-window-parameters
                                      (symbol-value (intern (format "auto-side-windows-%s-window-parameters" (symbol-name side))))))
               (side-alist (append auto-side-windows-common-alist
@@ -333,9 +348,7 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
                                (slot . ,slot)
                                (window-parameters . ,window-params)))))
     (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
-    (let ((window (unless (when (alist-get side auto-side-windows-reuse-mode-window)
-                            (display-buffer-reuse-mode-window buffer alist))
-                    (display-buffer-in-side-window buffer alist))))
+    (let ((window (display-buffer-in-side-window buffer alist)))
       (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
       window)))
 
