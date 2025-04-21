@@ -91,30 +91,51 @@ Here’s an example configuration using =use-package=:
   (use-package auto-side-windows
     :load-path "/path/to/auto-side-windows/"
     :custom
+    ;; Respects display actions when switching buffers
+    (switch-to-buffer-obey-display-actions t)
+
     ;; Top side window configurations
     (auto-side-windows-top-buffer-names
-     '("^\\*Backtrace\\*$" "^\\*Compile-Log\\*$" "^COMMIT_EDITMSG$"
-       "^\\*Org Src.*\\*" "^\\*Agenda Commands\\*$" "^\\*Org Agenda\\*$"
-       "^\\*Quick Help\\*$" "^\\*Multiple Choice Help\\*$" "^\\*TeX Help\\*$"
-       "^\\*TeX errors\\*$" "^\\*Warnings\\*$" "^\\*diff-hl\\*$"
+     '("^\\*Backtrace\\*$"
+       "^\\*Async-native-compile-log\\*$"
+       "^\\*Compile-Log\\*$"
+       "^\\*Multiple Choice Help\\*$"
+       "^\\*Quick Help\\*$"
+       "^\\*TeX Help\\*$"
+       "^\\*TeX errors\\*$"
+       "^\\*Warnings\\*$"
        "^\\*Process List\\*$"))
     (auto-side-windows-top-buffer-modes
-     '(flymake-diagnostics-buffer-mode locate-mode occur-mode grep-mode
-                                       xref--xref-buffer-mode))
+     '(flymake-diagnostics-buffer-mode
+       locate-mode
+       occur-mode
+       grep-mode
+       xref--xref-buffer-mode))
 
     ;; Bottom side window configurations
     (auto-side-windows-bottom-buffer-names
-     '("^\\*.*eshell.*\\*$" "^\\*.*shell.*\\*$" "^\\*.*term.*\\*$"
-       "^\\*.*vterm.*\\*$"))
+     '("^\\*eshell\\*$"
+       "^\\*shell\\*$"
+       "^\\*term\\*$"))
     (auto-side-windows-bottom-buffer-modes
-     '(eshell-mode shell-mode term-mode vterm-mode comint-mode debugger-mode))
+     '(eshell-mode
+       shell-mode
+       term-mode
+       comint-mode
+       debugger-mode))
 
     ;; Right side window configurations
     (auto-side-windows-right-buffer-names
-     '("^\\*eldoc.*\\*$" "^\\*info\\*$" "^\\*Metahelp\\*$"))
+     '("^\\*eldoc.*\\*$"
+       "^\\*info\\*$"
+       "^\\*Metahelp\\*$"))
     (auto-side-windows-right-buffer-modes
-     '(Info-mode TeX-output-mode pdf-view-mode eldoc-mode help-mode
-                 helpful-mode shortdoc-mode))
+     '(Info-mode
+       TeX-output-mode
+       eldoc-mode
+       help-mode
+       helpful-mode
+       shortdoc-mode))
 
     ;; Example: Custom parameters for top windows (e.g., fit height to buffer)
     ;; (auto-side-windows-top-alist '((window-height . fit-window-to-buffer)))
@@ -126,7 +147,7 @@ Here’s an example configuration using =use-package=:
     ;; Force left and right side windows to occupy full frame height
     (window-sides-vertical t)
 
-    ;; Make changes to tab-/header- and mode-line-format persistent when toggleling windows visibility
+    ;; Make changes to tab-/header- and mode-line-format persistent when toggling windows visibility
     (window-persistent-parameters
      (append window-persistent-parameters
              '((tab-line-format . t)
@@ -138,9 +159,11 @@ Here’s an example configuration using =use-package=:
           ("C-c w b" . auto-side-windows-display-buffer-bottom)
           ("C-c w l" . auto-side-windows-display-buffer-left)
           ("C-c w r" . auto-side-windows-display-buffer-right)
+          ("C-c w w" . auto-side-windows-switch-to-buffer)
+          ("C-c w t" . window-toggle-side-windows) ; Toggle all side windows
           ("C-c w T" . auto-side-windows-toggle-side-window)) ; Toggle current buffer in/out of side window
     :hook
-    (after-init . auto-side-windows-mode)) ; Activate the mode
+    (after-init . auto-side-windows-mode))
 #+end_src
 
 ** Usage
@@ -172,6 +195,7 @@ The package provides the following commands:
 - =auto-side-windows-toggle-side-window=: If the current buffer is in a side window created by this package, move it to a normal window. If it was just moved out, move it back to its side window configuration. Useful for temporarily maximizing a side window buffer.
 - =auto-side-windows-display-buffer-{top,bottom,left,right}=: Manually force the current buffer to be displayed in a side window on the specified side, overriding normal rules.
 - =auto-side-windows-display-buffer-on-side=: Manually force the current buffer to be displayed in a side window on the specified side, overriding normal rules. Compared to the command above the user is prompted side in the minibuffer.
+- =auto-side-windows-switch-to-buffer=: Switch to a side buffer. The option =switch-to-buffer-obey-display-actions= should be customized to a non-nil value to respect the display buffer actions defined by this package.
 
 ** Integration with Other Packages
 
@@ -234,13 +258,13 @@ Just add it to the =:preface= section of the above =use-package= declaration and
 
 Modify =display-buffer-base-action= to include =ace-display-buffer=. This tells Emacs to use Ace Window to ask you where to put a buffer if other methods fail.
 
-    #+begin_src emacs-lisp
-      (use-package ace-window
-        :custom
-        (display-buffer-base-action '(display-buffer-reuse-window
-                                      display-buffer-in-previous-window
-                                      ace-display-buffer))) ; Ask user via ace-window
-    #+end_src
+#+begin_src emacs-lisp
+  (use-package ace-window
+    :custom
+    (display-buffer-base-action '(display-buffer-reuse-mode-window
+                                  display-buffer-in-previous-window
+                                  ace-display-buffer))) ; Ask user via ace-window
+#+end_src
 
 Now, if a command tries to display a buffer and no =auto-side-windows= rule applies and standard reuse fails, =ace-display-buffer= will trigger, letting you pick the window.
 
@@ -286,7 +310,7 @@ While several packages address window management, =auto-side-windows= has a spec
 *** Popper
 [[https://github.com/karthink/popper][Popper]] excels at *managing* buffers that are already considered "popups". It allows you to quickly toggle, cycle through, and manage the visibility of these popup windows.
 
-*Difference:* =auto-side-windows= *defines which buffers should become* side windows in the first place. Popper can then be configured to *manage* these side windows created by =auto-side-windows= rules (see [[#popper-integration][Popper Integration]]). They work well together.
+*Difference:* =auto-side-windows= *defines which buffers should become side windows* in the first place. Popper can then be used to *manage* these side windows created by =auto-side-windows= rules (see [[#popper-integration][Popper Integration]]), by cycling through them or separating them by project. They work well together. 
 
 *** Core Emacs (=display-buffer-alist=)
 Emacs' built-in =display-buffer-alist= is the underlying mechanism for controlling buffer display. It's extremely powerful but requires writing potentially complex alist structures.
