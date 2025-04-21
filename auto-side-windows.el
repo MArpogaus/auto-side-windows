@@ -351,21 +351,21 @@ If no free slot is found, the largest allowed slot number is used.
 Before displaying the buffer, it runs `auto-side-windows-before-display-hook'.
 After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
   (when-let* ((side (auto-side-windows--get-buffer-side buffer `(nil . ,alist)))
-              (slot (auto-side-windows--get-next-free-slot side buffer))
-              (window-params (append auto-side-windows-common-window-parameters
-                                     (symbol-value (intern (format "auto-side-windows-%s-window-parameters" (symbol-name side))))))
-              (side-alist (append auto-side-windows-common-alist
-                                  (symbol-value (intern (format "auto-side-windows-%s-alist" (symbol-name side))))))
-              (alist (append alist
-                             side-alist
-                             `((side . ,side)
-                               (slot . ,slot)
-                               (window-parameters . ,window-params)))))
-    (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
-    (let ((window (or (get-buffer-window buffer nil)
-                      (display-buffer-in-side-window buffer alist))))
-      (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
-      window)))
+              (slot (auto-side-windows--get-next-free-slot side buffer)))
+    (let* ((window-params (append auto-side-windows-common-window-parameters
+                                  (symbol-value (intern (format "auto-side-windows-%s-window-parameters" (symbol-name side))))))
+           (side-alist (append auto-side-windows-common-alist
+                               (symbol-value (intern (format "auto-side-windows-%s-alist" (symbol-name side))))))
+           (alist (append alist
+                          side-alist
+                          `((side . ,side)
+                            (slot . ,slot)
+                            (window-parameters . ,window-params)))))
+      (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
+      (let ((window (or (get-buffer-window buffer nil)
+                        (display-buffer-in-side-window buffer alist))))
+        (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
+        window))))
 
 (defun auto-side-windows--group-function (candidate transform)
   "Grouping function for auto-side-windows buffers.
