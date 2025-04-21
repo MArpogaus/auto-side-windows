@@ -360,10 +360,9 @@ To resemble the example shown in the screenshot add this to your configuration:
              (prefix (car prefix-and-face))
              (background (face-foreground (cdr prefix-and-face)))
              (foreground (face-background (cdr prefix-and-face) nil 'default))
-             (prefix-face `((t :inherit bold :background ,background :foreground ,foreground)))
-             (buffer-face `((t :inherit bold :foreground ,background))))
+             (prefix-face (list :inherit 'bold :background background :foreground foreground))
+             (buffer-face (list :inherit 'bold :foreground background)))
           (set-window-fringes nil 1 1 t)
-          ;; (set-window-margins nil 1 1)
           (my/install-top-side-window-face-remaps buffer foreground background)
           (list
            (propertize prefix 'face prefix-face 'display '(space-width 0.7))
