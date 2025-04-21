@@ -182,7 +182,7 @@ These parameters will be applied to all side windows created by
   :type 'alist
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-common-alist '((dedicated . t))
+(defcustom auto-side-windows-common-alist nil
   "Custom alist for all side windows.
 These parameters will be applied to all side windows created by
 `auto-side-windows-mode`."
@@ -247,6 +247,8 @@ conditions are met.
 Optional ARGS may contain a category (New in Emacs>30.1)."
   (with-current-buffer buffer
     (cond
+     ((local-variable-if-set-p 'detached-side-window buffer)
+      'detached)
      ((and (buffer-match-p `(not ,@(append auto-side-windows-left-extra-conditions
                                            auto-side-windows-right-extra-conditions
                                            auto-side-windows-top-extra-conditions
@@ -301,36 +303,37 @@ Optional ARGS may contain a category (New in Emacs>30.1)."
 Each side window can have multiple slots numbered from 0 to MAX-SLOTS-1.
 This function finds and returns the next available slot number for use.
 
-If `auto-side-windows-reuse-mode-window' is `t' for SIDE, return the slot number
+If `auto-side-windows-reuse-mode-window' is t for SIDE, return the slot number
 of the first side window containing a buffer with the same major mode as BUFFER.
 
 If no free slot is found return MAX-SLOTS-1."
-  (let* ((max-slots (nth (cond ((eq side 'left) 0)
-                               ((eq side 'top) 1)
-                               ((eq side 'right) 2)
-                               ((eq side 'bottom) 3))
-                         window-sides-slots))
-         (buffer-mode (with-current-buffer buffer major-mode))
-         (major-mode-slot max-slots)
-         used-slots)
-    ;; Collect used slots
-    (dolist (win (window-list))
-      (when (equal (window-parameter win 'window-side) side)
-        (when-let ((slot (window-parameter win 'window-slot)))
-          (push slot used-slots) ;; collect all used slots
-          ;; when reused mode window is enabled for this side
-          ;; use the first used slot with a derived major mode
-          (when (and (alist-get side auto-side-windows-reuse-mode-window)
-                     (equal buffer-mode (with-selected-window win major-mode)))
-            (setq major-mode-slot (min major-mode-slot slot))))))
+  (unless (eq side 'detached)
+    (let* ((max-slots (nth (cond ((eq side 'left) 0)
+                                 ((eq side 'top) 1)
+                                 ((eq side 'right) 2)
+                                 ((eq side 'bottom) 3))
+                           window-sides-slots))
+           (buffer-mode (with-current-buffer buffer major-mode))
+           (major-mode-slot max-slots)
+           used-slots)
+      ;; Collect used slots
+      (dolist (win (window-list))
+        (when (equal (window-parameter win 'window-side) side)
+          (when-let ((slot (window-parameter win 'window-slot)))
+            (push slot used-slots) ;; collect all used slots
+            ;; when reused mode window is enabled for this side
+            ;; use the first used slot with a derived major mode
+            (when (and (alist-get side auto-side-windows-reuse-mode-window)
+                       (equal buffer-mode (with-selected-window win major-mode)))
+              (setq major-mode-slot (min major-mode-slot slot))))))
 
-    ;; Find the next free slot
-    (if-let ((next-slot (if (< major-mode-slot max-slots) major-mode-slot
-                          (catch 'next-slot
-                            (dotimes (i max-slots)
-                              (unless (member i used-slots)
-                                (throw 'next-slot i)))))))
-        next-slot (1- max-slots))))
+      ;; Find the next free slot
+      (if-let ((next-slot (if (< major-mode-slot max-slots) major-mode-slot
+                            (catch 'next-slot
+                              (dotimes (i max-slots)
+                                (unless (member i used-slots)
+                                  (throw 'next-slot i)))))))
+          next-slot (1- max-slots)))))
 
 (defun auto-side-windows--display-buffer (buffer alist)
   "Custom display buffer function for `auto-side-windows-mode'.
@@ -341,7 +344,7 @@ displays BUFFER in the next free side window slot.
 If the BUFFER is already displayed in an existing window it is reused, even
 if not a side window.
 
-If `auto-side-windows-reuse-mode-window' is `t' for the side the first side
+If `auto-side-windows-reuse-mode-window' is t for the side the first side
 window containing a buffer with the same major mode is used.
 If no free slot is found, the largest allowed slot number is used.
 
@@ -364,6 +367,18 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
       (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
       window)))
 
+(defun auto-side-windows--group-function (candidate transform)
+  "Grouping function for auto-side-windows buffers.
+
+The function take two arguments, the completion CANDIDATE, and TRANSFORM, which
+is a boolean flag. If transform is nil, the function returns the group title to
+which the candidate belongs. The returned title can also be nil. Otherwise the
+function returns the candidate name."
+  (if transform candidate
+    (when-let* ((buffer (get-buffer candidate))
+                (side  (auto-side-windows--get-buffer-side buffer)))
+      (format "%s" side))))
+
 ;;;; Commands
 (defun auto-side-windows-toggle-side-window nil
   "Toggle the current buffer as a side window.
@@ -380,14 +395,14 @@ After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
       (cond
        ((window-parameter window 'window-side)
         (progn
-          (setq-local was-side-window t)
+          (setq-local detached-side-window t)
           (display-buffer
            buf '(display-buffer-use-some-window . ((some-window . mru)
                                                    (category . detached-side-window))))
           (delete-window window)))
-       ((local-variable-if-set-p 'was-side-window buf)
+       ((local-variable-if-set-p 'detached-side-window buf)
         (progn
-          (kill-local-variable 'was-side-window)
+          (kill-local-variable 'detached-side-window)
           (switch-to-prev-buffer window 'bury)
           (display-buffer buf)))
        (t
@@ -429,6 +444,22 @@ and `auto-side-windows-after-display-hook` after."
   "Display the current buffer in a right side window."
   (interactive)
   (auto-side-windows-display-buffer-on-side 'right))
+
+(defun auto-side-windows-switch-to-buffer (buffer)
+  "Switch to side BUFFER.
+The option `switch-to-buffer-obey-display-actions' should be customized to a
+non-nil value to respect the display buffer actions defined by this package."
+  (interactive
+   (list
+    (when-let ((side-buffers (seq-filter 'auto-side-windows--get-buffer-side (buffer-list)))
+               (pred (lambda (b)
+                       (setq b (get-buffer (if (consp b) (car b) b)))
+                       (member b side-buffers)))
+               ;; Add annotation via completion-extra-properties
+               (completion-extra-properties (list :group-function #'auto-side-windows--group-function)))
+      (read-buffer "Switch to side buffer: " nil t pred))))
+  (if buffer (switch-to-buffer buffer)
+    (message "No side buffers.")))
 
 ;;;; Minor Mode
 ;;;###autoload
