@@ -420,7 +420,9 @@ and `auto-side-windows-after-display-hook` after."
     (if-let* ((window (selected-window))
               (window-side (window-parameter window 'window-side)))
         (delete-window window)
-      (switch-to-prev-buffer window 'bury))
+      (progn
+        (kill-local-variable 'detached-side-window)
+        (switch-to-prev-buffer window 'bury)))
     (display-buffer buf alist)
     (with-current-buffer buf
       (setq-local auto-side-window-force-side side))))
