@@ -89,28 +89,28 @@ it will be shown in the right side window."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-top-extra-conditions '((category . force-side-top))
+(defcustom auto-side-windows-top-extra-conditions nil
   "Lists of extra conditions to match top buffers.
 These extra conditions are checked along with buffer name and major mode
 rules to determine if a buffer should be displayed in a top side window."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-bottom-extra-conditions '((category . force-side-bottom))
+(defcustom auto-side-windows-bottom-extra-conditions nil
   "Lists of extra conditions to match bottom buffers.
 These extra conditions are checked along with buffer name and major mode
 rules to determine if a buffer should be displayed in a bottom side window."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-left-extra-conditions '((category . force-side-left))
+(defcustom auto-side-windows-left-extra-conditions nil
   "Lists of extra conditions to match left buffers.
 These extra conditions are checked along with buffer name and major mode
 rules to determine if a buffer should be displayed in a left side window."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-right-extra-conditions '((category . force-side-right))
+(defcustom auto-side-windows-right-extra-conditions nil
   "Lists of extra conditions to match right buffers.
 These extra conditions are checked along with buffer name and major mode
 rules to determine if a buffer should be displayed in a right side window."
@@ -239,62 +239,43 @@ additional conditions to refine the matching process."
     (setq modes-cond (append modes-cond extra-conds))
     modes-cond))
 
-(defun auto-side-windows--get-buffer-side (buffer &optional args)
+(defun auto-side-windows--get-buffer-side (buffer &optional alist)
   "Determine which side BUFFER should be displayed in.
 This function checks the buffer against user-defined conditions relative to the
 side windows. It returns `'top', `'bottom', `'left', or `'right',or nil if no
 conditions are met.
-Optional ARGS may contain a category (New in Emacs>30.1)."
+Optional ALIST may contain a specific side."
   (with-current-buffer buffer
     (cond
      ((local-variable-if-set-p 'detached-side-window buffer)
       'detached)
-     ((and (buffer-match-p `(not ,@(append auto-side-windows-left-extra-conditions
-                                           auto-side-windows-right-extra-conditions
-                                           auto-side-windows-top-extra-conditions
-                                           auto-side-windows-bottom-extra-conditions)
-                                 (category . detached-side-window)) buffer args)
-           (boundp 'auto-side-window-force-side))
-      auto-side-window-force-side)
-     ((buffer-match-p `(and (not ,@(append auto-side-windows-left-extra-conditions
-                                           auto-side-windows-right-extra-conditions
-                                           auto-side-windows-bottom-extra-conditions)
-                                 (category . detached-side-window))
-                            ,(auto-side-windows--buffer-match-condition
-                              auto-side-windows-top-buffer-modes
-                              auto-side-windows-top-buffer-names
-                              auto-side-windows-top-extra-conditions))
-                      buffer args)
+     ((assq 'side alist)
+      (alist-get 'side alist))
+     ((boundp 'auto-side-window-side)
+      auto-side-window-side)
+     ((buffer-match-p (auto-side-windows--buffer-match-condition
+                       auto-side-windows-top-buffer-modes
+                       auto-side-windows-top-buffer-names
+                       auto-side-windows-top-extra-conditions)
+                      buffer alist)
       'top)
-     ((buffer-match-p `(and (not ,@(append auto-side-windows-left-extra-conditions
-                                           auto-side-windows-right-extra-conditions
-                                           auto-side-windows-top-extra-conditions)
-                                 (category . detached-side-window))
-                            ,(auto-side-windows--buffer-match-condition
-                              auto-side-windows-bottom-buffer-modes
-                              auto-side-windows-bottom-buffer-names
-                              auto-side-windows-bottom-extra-conditions))
-                      buffer args)
+     ((buffer-match-p (auto-side-windows--buffer-match-condition
+                       auto-side-windows-bottom-buffer-modes
+                       auto-side-windows-bottom-buffer-names
+                       auto-side-windows-bottom-extra-conditions)
+                      buffer alist)
       'bottom)
-     ((buffer-match-p `(and (not ,@(append auto-side-windows-top-extra-conditions
-                                           auto-side-windows-right-extra-conditions
-                                           auto-side-windows-bottom-extra-conditions)
-                                 (category . detached-side-window))
-                            ,(auto-side-windows--buffer-match-condition
-                              auto-side-windows-left-buffer-modes
-                              auto-side-windows-left-buffer-names
-                              auto-side-windows-left-extra-conditions))
-                      buffer args)
+     ((buffer-match-p (auto-side-windows--buffer-match-condition
+                       auto-side-windows-left-buffer-modes
+                       auto-side-windows-left-buffer-names
+                       auto-side-windows-left-extra-conditions)
+                      buffer alist)
       'left)
-     ((buffer-match-p `(and (not ,@(append auto-side-windows-left-extra-conditions
-                                           auto-side-windows-top-extra-conditions
-                                           auto-side-windows-bottom-extra-conditions)
-                                 (category . detached-side-window))
-                            ,(auto-side-windows--buffer-match-condition
-                              auto-side-windows-right-buffer-modes
-                              auto-side-windows-right-buffer-names
-                              auto-side-windows-right-extra-conditions))
-                      buffer args)
+     ((buffer-match-p (auto-side-windows--buffer-match-condition
+                       auto-side-windows-right-buffer-modes
+                       auto-side-windows-right-buffer-names
+                       auto-side-windows-right-extra-conditions)
+                      buffer alist)
       'right)
      (t nil))))
 
@@ -350,7 +331,7 @@ If no free slot is found, the largest allowed slot number is used.
 
 Before displaying the buffer, it runs `auto-side-windows-before-display-hook'.
 After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
-  (when-let* ((side (auto-side-windows--get-buffer-side buffer `(nil . ,alist)))
+  (when-let* ((side (auto-side-windows--get-buffer-side buffer alist))
               (slot (auto-side-windows--get-next-free-slot side buffer)))
     (let* ((window-params (append auto-side-windows-common-window-parameters
                                   (symbol-value (intern (format "auto-side-windows-%s-window-parameters" (symbol-name side))))))
@@ -364,6 +345,8 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
       (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
       (let ((window (or (get-buffer-window buffer nil)
                         (display-buffer-in-side-window buffer alist))))
+        (with-current-buffer buffer
+          (setq-local auto-side-window-side side))
         (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
         window))))
 
@@ -397,8 +380,7 @@ After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
         (progn
           (setq-local detached-side-window t)
           (display-buffer
-           buf '(display-buffer-use-some-window . ((some-window . mru)
-                                                   (category . detached-side-window))))
+           buf '(display-buffer-use-some-window . ((some-window . mru))))
           (delete-window window)))
        ((local-variable-if-set-p 'detached-side-window buf)
         (progn
@@ -415,17 +397,16 @@ This command explicitly places the buffer in the specified side window.
 It runs `auto-side-windows-before-display-hook` before displaying the buffer
 and `auto-side-windows-after-display-hook` after."
   (interactive (list (intern (completing-read "Select side: " '("left" "right" "top" "bottom")))))
-  (let ((buf (current-buffer))
-        (alist `(nil . ((category . ,(intern (concat "force-side-" (symbol-name side))))))))
+  (let ((buf (current-buffer)))
     (if-let* ((window (selected-window))
               (window-side (window-parameter window 'window-side)))
         (delete-window window)
       (progn
         (kill-local-variable 'detached-side-window)
         (switch-to-prev-buffer window 'bury)))
-    (display-buffer buf alist)
     (with-current-buffer buf
-      (setq-local auto-side-window-force-side side))))
+      (setq-local auto-side-window-side side))
+    (display-buffer buf)))
 
 (defun auto-side-windows-display-buffer-top ()
   "Display the current buffer in a top side window."
