@@ -404,9 +404,7 @@ and `auto-side-windows-after-display-hook` after."
       (progn
         (kill-local-variable 'detached-side-window)
         (switch-to-prev-buffer window 'bury)))
-    (with-current-buffer buf
-      (setq-local auto-side-window-side side))
-    (display-buffer buf)))
+    (display-buffer buf `(auto-side-windows--display-buffer . ((side . ,side))))))
 
 (defun auto-side-windows-display-buffer-top ()
   "Display the current buffer in a top side window."
