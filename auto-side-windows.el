@@ -372,24 +372,24 @@ Before toggling the buffer, it runs `auto-side-windows-before-toggle-hook'.
 After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
   (interactive)
   (let ((window (selected-window))
-        (buf (current-buffer)))
+        (buffer (current-buffer)))
     (with-selected-window window
-      (run-hook-with-args 'auto-side-windows-before-toggle-hook buf)
-      (cond
-       ((window-parameter window 'window-side)
-        (progn
-          (setq-local detached-side-window t)
-          (display-buffer
-           buf '(display-buffer-use-some-window . ((some-window . mru))))
-          (delete-window window)))
-       ((local-variable-if-set-p 'detached-side-window buf)
-        (progn
-          (kill-local-variable 'detached-side-window)
-          (switch-to-prev-buffer window 'bury)
-          (display-buffer buf)))
-       (t
-        (error "Not a side window")))
-      (run-hook-with-args 'auto-side-windows-after-toggle-hook buf))))
+      (with-current-buffer buffer
+        (run-hook-with-args 'auto-side-windows-before-toggle-hook buffer)
+        (cond
+         ((window-parameter window 'window-side)
+          (progn
+            (setq-local detached-side-window t)
+            (delete-window window)
+            (display-buffer buffer '(nil . ((some-window . mru))))))
+         ((local-variable-if-set-p 'detached-side-window buffer)
+          (progn
+            (kill-local-variable 'detached-side-window)
+            (switch-to-prev-buffer window 'bury)
+            (display-buffer buffer '(nil . ((post-command-select-window . t))))))
+         (t
+          (error "Not a side window")))
+        (run-hook-with-args 'auto-side-windows-after-toggle-hook buffer)))))
 
 (defun auto-side-windows-display-buffer-on-side (side)
   "Display the current buffer in a window on SIDE.
@@ -397,14 +397,16 @@ This command explicitly places the buffer in the specified side window.
 It runs `auto-side-windows-before-display-hook` before displaying the buffer
 and `auto-side-windows-after-display-hook` after."
   (interactive (list (intern (completing-read "Select side: " '("left" "right" "top" "bottom")))))
-  (let ((buf (current-buffer)))
+  (let ((buffer (current-buffer)))
     (if-let* ((window (selected-window))
               (window-side (window-parameter window 'window-side)))
         (delete-window window)
-      (progn
-        (kill-local-variable 'detached-side-window)
-        (switch-to-prev-buffer window 'bury)))
-    (display-buffer buf `(auto-side-windows--display-buffer . ((side . ,side))))))
+      (with-current-buffer buffer
+        (progn
+          (kill-local-variable 'detached-side-window)
+          (switch-to-prev-buffer window 'bury))))
+    (display-buffer buffer `(nil . ((side . ,side)
+              (post-command-select-window . t))))))
 
 (defun auto-side-windows-display-buffer-top ()
   "Display the current buffer in a top side window."
