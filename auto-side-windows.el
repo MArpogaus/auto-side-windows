@@ -251,8 +251,8 @@ Optional ALIST may contain a specific side."
       'detached)
      ((assq 'side alist)
       (alist-get 'side alist))
-     ((boundp 'auto-side-window-side)
-      auto-side-window-side)
+     ((boundp 'auto-side-windows-side)
+      auto-side-windows-side)
      ((buffer-match-p (auto-side-windows--buffer-match-condition
                        auto-side-windows-top-buffer-modes
                        auto-side-windows-top-buffer-names
@@ -346,7 +346,7 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
       (let ((window (or (get-buffer-window buffer nil)
                         (display-buffer-in-side-window buffer alist))))
         (with-current-buffer buffer
-          (setq-local auto-side-window-side side))
+          (setq-local auto-side-windows-side side))
         (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
         window))))
 
