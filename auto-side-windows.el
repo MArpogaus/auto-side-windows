@@ -350,7 +350,9 @@ window containing a buffer with the same major mode is used.
 If no free slot is found, the largest allowed slot number is used.
 
 Before displaying the buffer, it runs `auto-side-windows-before-display-hook'.
-After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
+After displaying it in a side window, it runs
+`auto-side-windows-after-display-hook'.  A reused ordinary window gets
+neither that hook nor a side to remember: the buffer went to no side."
   (when-let* ((side (auto-side-windows--get-buffer-side buffer alist))
               (slot (auto-side-windows--get-next-free-slot side buffer)))
     (let* ((window-params (append auto-side-windows-common-window-parameters
@@ -369,9 +371,15 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
       (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
       (let ((window (or (get-buffer-window buffer nil)
                         (display-buffer-in-side-window buffer alist))))
-        (with-current-buffer buffer
-          (setq-local auto-side-windows-side side))
-        (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
+        ;; The reused window may be an ordinary one.  Then the buffer
+        ;; went to no side and must not claim one, and the hook must
+        ;; not run: it is there to dress a side window, and it would
+        ;; be dressing a plain split.
+        (when (window-parameter window 'window-side)
+          (with-current-buffer buffer
+            (setq-local auto-side-windows-side side))
+          (run-hook-with-args 'auto-side-windows-after-display-hook
+                              buffer window))
         window))))
 
 (defun auto-side-windows--group-function (candidate transform)
