@@ -3,6 +3,7 @@
 ;; Copyright (C) 2025 Marcel Arpogaus
 
 ;; Author: Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
+;; Assisted-by: Claude:claude-opus-5
 ;; URL: https://github.com/MArpogaus/auto-side-windows
 
 ;; This file is not part of GNU Emacs.
