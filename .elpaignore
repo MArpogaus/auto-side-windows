@@ -1,0 +1,6 @@
+.dir-locals.el
+.elpaignore
+.github
+Makefile
+screenshot.png
+test
