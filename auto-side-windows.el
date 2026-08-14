@@ -107,30 +107,30 @@ it will be shown in the right side window."
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-top-extra-conditions nil
-  "Lists of extra conditions to match top buffers.
-These extra conditions are checked along with buffer name and major mode
-rules to determine if a buffer should be displayed in a top side window."
+  "Extra conditions that send a buffer to a top side window.
+Any condition `buffer-match-p' accepts works; a buffer matching one of
+them goes to this side, in addition to the name and mode rules."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-bottom-extra-conditions nil
-  "Lists of extra conditions to match bottom buffers.
-These extra conditions are checked along with buffer name and major mode
-rules to determine if a buffer should be displayed in a bottom side window."
+  "Extra conditions that send a buffer to a bottom side window.
+Any condition `buffer-match-p' accepts works; a buffer matching one of
+them goes to this side, in addition to the name and mode rules."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-left-extra-conditions nil
-  "Lists of extra conditions to match left buffers.
-These extra conditions are checked along with buffer name and major mode
-rules to determine if a buffer should be displayed in a left side window."
+  "Extra conditions that send a buffer to a left side window.
+Any condition `buffer-match-p' accepts works; a buffer matching one of
+them goes to this side, in addition to the name and mode rules."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-right-extra-conditions nil
-  "Lists of extra conditions to match right buffers.
-These extra conditions are checked along with buffer name and major mode
-rules to determine if a buffer should be displayed in a right side window."
+  "Extra conditions that send a buffer to a right side window.
+Any condition `buffer-match-p' accepts works; a buffer matching one of
+them goes to this side, in addition to the name and mode rules."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
