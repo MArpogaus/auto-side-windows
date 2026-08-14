@@ -102,7 +102,32 @@ manager, and configure it as shown below:
 
 *** Example Configuration
 
-Here’s an example configuration using =use-package=:
+A minimal, working setup — the demo above runs on exactly this:
+
+#+begin_src emacs-lisp
+  (use-package auto-side-windows
+    :ensure t
+    :custom
+    ;; Buffers move to a side when `switch-to-buffer' shows them too.
+    (switch-to-buffer-obey-display-actions t)
+    ;; Where buffers go, by major mode: help right, occur top,
+    ;; shells bottom.
+    (auto-side-windows-right-buffer-modes '(help-mode))
+    (auto-side-windows-top-buffer-modes '(occur-mode))
+    (auto-side-windows-bottom-buffer-modes '(eshell-mode shell-mode))
+    ;; Reasonable sizes for the sides in use.
+    (auto-side-windows-right-alist '((window-width . 46)))
+    (auto-side-windows-bottom-alist '((window-height . 12)))
+    :hook (after-init . auto-side-windows-mode))
+#+end_src
+
+Open a help buffer (=C-h f=), run =M-x occur= or start =eshell=, and
+each lands on its side while the editing area stays put.
+=auto-side-windows-toggle-side-window= detaches the current side
+window into a normal one, and puts it back.
+
+A complete configuration with more rules, window parameters and
+keybindings:
 
 #+begin_src emacs-lisp
   (use-package auto-side-windows
