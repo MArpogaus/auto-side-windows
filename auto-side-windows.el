@@ -6,17 +6,33 @@
 ;; Version: 0.1
 ;; Package-Requires: ((emacs "30.1"))
 ;; Keywords: convenience, windows, buffers
+;; URL: https://github.com/MArpogaus/auto-side-windows
+
+;; This file is not part of GNU Emacs.
+
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
 ;; `auto-side-windows-mode' allows users to automatically display buffers
-;; in side windows based on user-defined name or mode rules. This package
+;; in side windows based on user-defined name or mode rules.  This package
 ;; enhances workflow and buffer organization by providing a more predictable
 ;; and organized buffer management.
 
 ;; The user can define buffers to be displayed in the left, right, top, or
 ;; bottom side windows through a set of buffer name regular expressions and
-;; major modes. Extra conditions can also be specified to refine these rules
+;; major modes.  Extra conditions can also be specified to refine these rules
 ;; further.
 
 ;; Additionally, the package provides commands to toggle side windows or display
@@ -31,7 +47,7 @@
 ;;;; Customization Variables
 (defcustom auto-side-windows-top-buffer-names nil
   "List of buffer name regexps to be displayed in top side windows.
-Each regexp is used to match buffer names. When a buffer's name
+Each regexp is used to match buffer names.  When a buffer's name
 matches any regex in this list, the buffer will be shown in the
 top side window."
   :type '(repeat string)
@@ -39,7 +55,7 @@ top side window."
 
 (defcustom auto-side-windows-bottom-buffer-names nil
   "List of buffer name regexps to be displayed in bottom side windows.
-Each regexp is used to match buffer names. When a buffer's name
+Each regexp is used to match buffer names.  When a buffer's name
 matches any regex in this list, the buffer will be shown in the
 bottom side window."
   :type '(repeat string)
@@ -47,7 +63,7 @@ bottom side window."
 
 (defcustom auto-side-windows-left-buffer-names nil
   "List of buffer name regexps to be displayed in left side windows.
-Each regexp is used to match buffer names. When a buffer's name
+Each regexp is used to match buffer names.  When a buffer's name
 matches any regex in this list, the buffer will be shown in the
 left side window."
   :type '(repeat string)
@@ -55,7 +71,7 @@ left side window."
 
 (defcustom auto-side-windows-right-buffer-names nil
   "List of buffer name regexps to be displayed in right side windows.
-Each regexp is used to match buffer names. When a buffer's name
+Each regexp is used to match buffer names.  When a buffer's name
 matches any regex in this list, the buffer will be shown in the
 right side window."
   :type '(repeat string)
@@ -185,7 +201,7 @@ These parameters will be applied to all side windows created by
 (defcustom auto-side-windows-common-alist nil
   "Custom alist for all side windows.
 These parameters will be applied to all side windows created by
-`auto-side-windows-mode`."
+`auto-side-windows-mode'."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -232,7 +248,7 @@ These functions determine how buffers are displayed in side windows.")
 (defun auto-side-windows--buffer-match-condition (majormodes &optional buffernames extra-conds)
   "Get condition to match buffers with given MAJORMODES or BUFFERNAMES.
 MAJORMODES are the major modes to match, while BUFFERNAMES
-are optional regex patterns for buffer names. EXTRA-CONDS are
+are optional regex patterns for buffer names.  EXTRA-CONDS are
 additional conditions to refine the matching process."
   (let ((modes-cond `(or ,@(mapcar (lambda (mode) `(derived-mode . ,mode)) majormodes))))
     (when buffernames (setq modes-cond `(or (or ,@buffernames) ,modes-cond)))
@@ -242,7 +258,7 @@ additional conditions to refine the matching process."
 (defun auto-side-windows--get-buffer-side (buffer &optional alist)
   "Determine which side BUFFER should be displayed in.
 This function checks the buffer against user-defined conditions relative to the
-side windows. It returns `'top', `'bottom', `'left', or `'right',or nil if no
+side windows.  It returns `'top', `'bottom', `'left', or `'right',or nil if no
 conditions are met.
 Optional ALIST may contain a specific side."
   (with-current-buffer buffer
@@ -300,7 +316,7 @@ If no free slot is found return MAX-SLOTS-1."
       ;; Collect used slots
       (dolist (win (window-list))
         (when (equal (window-parameter win 'window-side) side)
-          (when-let ((slot (window-parameter win 'window-slot)))
+          (when-let* ((slot (window-parameter win 'window-slot)))
             (push slot used-slots) ;; collect all used slots
             ;; when reused mode window is enabled for this side
             ;; use the first used slot with a derived major mode
@@ -309,7 +325,7 @@ If no free slot is found return MAX-SLOTS-1."
               (setq major-mode-slot (min major-mode-slot slot))))))
 
       ;; Find the next free slot
-      (if-let ((next-slot (if (< major-mode-slot max-slots) major-mode-slot
+      (if-let* ((next-slot (if (< major-mode-slot max-slots) major-mode-slot
                             (catch 'next-slot
                               (dotimes (i max-slots)
                                 (unless (member i used-slots)
@@ -354,8 +370,8 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
   "Grouping function for auto-side-windows buffers.
 
 The function take two arguments, the completion CANDIDATE, and TRANSFORM, which
-is a boolean flag. If transform is nil, the function returns the group title to
-which the candidate belongs. The returned title can also be nil. Otherwise the
+is a boolean flag.  If transform is nil, the function returns the group title to
+which the candidate belongs.  The returned title can also be nil.  Otherwise the
 function returns the candidate name."
   (if transform candidate
     (when-let* ((buffer (get-buffer candidate))
@@ -363,10 +379,10 @@ function returns the candidate name."
       (format "%s" side))))
 
 ;;;; Commands
-(defun auto-side-windows-toggle-side-window nil
+(defun auto-side-windows-toggle-side-window ()
   "Toggle the current buffer as a side window.
 If the current window is already a side window, it will delete
-the window. If not, the buffer will be displayed in a side window.
+the window.  If not, the buffer will be displayed in a side window.
 
 Before toggling the buffer, it runs `auto-side-windows-before-toggle-hook'.
 After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
@@ -394,8 +410,8 @@ After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
 (defun auto-side-windows-display-buffer-on-side (side)
   "Display the current buffer in a window on SIDE.
 This command explicitly places the buffer in the specified side window.
-It runs `auto-side-windows-before-display-hook` before displaying the buffer
-and `auto-side-windows-after-display-hook` after."
+It runs `auto-side-windows-before-display-hook' before displaying the buffer
+and `auto-side-windows-after-display-hook' after."
   (interactive (list (intern (completing-read "Select side: " '("left" "right" "top" "bottom")))))
   (let ((buffer (current-buffer)))
     (if-let* ((window (selected-window))
@@ -434,7 +450,7 @@ The option `switch-to-buffer-obey-display-actions' should be customized to a
 non-nil value to respect the display buffer actions defined by this package."
   (interactive
    (list
-    (when-let ((side-buffers (seq-filter 'auto-side-windows--get-buffer-side (buffer-list)))
+    (when-let* ((side-buffers (seq-filter 'auto-side-windows--get-buffer-side (buffer-list)))
                (pred (lambda (b)
                        (setq b (get-buffer (if (consp b) (car b) b)))
                        (member b side-buffers)))
@@ -449,8 +465,8 @@ non-nil value to respect the display buffer actions defined by this package."
 (define-minor-mode auto-side-windows-mode
   "Toggle automatic side window management based on buffer rules.
 When enabled, this minor mode allows customized display of buffers
-in defined side windows based on their names or modes. It adds
-provided functions to `display-buffer-alist` to enable this feature."
+in defined side windows based on their names or modes.  It adds
+provided functions to `display-buffer-alist' to enable this feature."
   :global t
   :group 'auto-side-windows
   (if auto-side-windows-mode
