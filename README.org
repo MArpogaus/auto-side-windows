@@ -6,7 +6,7 @@
 [[https://github.com/MArpogaus/auto-side-windows/stargazers][https://img.shields.io/github/stars/MArpogaus/auto-side-windows.svg?style=flat-square]]
 [[https://github.com/MArpogaus/auto-side-windows/issues][https://img.shields.io/github/issues/MArpogaus/auto-side-windows.svg?style=flat-square]]
 [[https://github.com/MArpogaus/auto-side-windows/blob/main/COPYING][https://img.shields.io/github/license/MArpogaus/auto-side-windows.svg?style=flat-square]]
-[[https://github.com/MArpogaus/auto-side-windows/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/MArpogaus/auto-side-windows/test.yml?branch=dev&style=flat-square&label=tests]]
+[[https://github.com/MArpogaus/auto-side-windows/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/MArpogaus/auto-side-windows/test.yml?branch=main&style=flat-square&label=tests]]
 [[https://melpa.org/#/auto-side-windows][https://melpa.org/packages/auto-side-windows-badge.svg?style=flat-square]]
 [[https://linkedin.com/in/MArpogaus][https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555]]
 
