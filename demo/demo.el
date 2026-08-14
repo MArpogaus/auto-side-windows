@@ -3,7 +3,6 @@
 (require 'auto-side-windows)
 (setq inhibit-startup-screen t ring-bell-function #'ignore)
 (menu-bar-mode -1) (tool-bar-mode -1) (scroll-bar-mode -1)
-(load-theme 'modus-vivendi t)
 (set-frame-font "Source Code Pro 13" nil t)
 (blink-cursor-mode -1)
 ;; Visible boundaries between the main window and the side windows.
