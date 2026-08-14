@@ -45,8 +45,9 @@ flycheck_*.el
 # projectiles files
 .projectile
 
-# directory configuration
+# directory configuration, but this project ships one
 .dir-locals.el
+!/.dir-locals.el
 
 # network security
 /network-security.data
@@ -73,7 +74,8 @@ flycheck_*.el
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -125,3 +127,7 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,windows,macos,emacs
+
+### This project ###
+# tool sandbox created by the Makefile
+/.sandbox/
