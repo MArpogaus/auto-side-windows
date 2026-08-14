@@ -116,5 +116,39 @@ The command used to reference an unbound variable on this path."
       (should (windowp (progn (auto-side-windows-display-buffer-on-side 'right)
                               (get-buffer-window buffer)))))))
 
+(ert-deftest auto-side-windows-test-reused-plain-window-claims-no-side ()
+  "A buffer already on screen in an ordinary window stays ordinary.
+The window is reused as documented, but the buffer went to no side,
+so it must not remember one, and the after-display hook must not run:
+it is there to dress a side window."
+  (let* ((buffer (get-buffer-create "*auto-side-windows-test*"))
+         (auto-side-windows-right-buffer-modes '(help-mode))
+         (auto-side-windows-after-display-hook nil)
+         (display-buffer-alist nil)
+         ran)
+    (add-hook 'auto-side-windows-after-display-hook
+              (lambda (&rest args) (push args ran)))
+    (unwind-protect
+        (progn
+          (with-current-buffer buffer (help-mode))
+          (delete-other-windows)
+          (let ((plain (split-window)))
+            (set-window-buffer plain buffer)
+            (auto-side-windows--display-buffer buffer nil)
+            (should-not (window-parameter plain 'window-side))
+            (should-not ran)
+            (should-not (buffer-local-value 'auto-side-windows-side buffer)))
+          ;; a window that really is a side still gets both
+          (delete-other-windows)
+          (switch-to-buffer "*scratch*")
+          (setq ran nil)
+          (let ((window (auto-side-windows--display-buffer buffer nil)))
+            (should (eq (window-parameter window 'window-side) 'right))
+            (should ran)
+            (should (eq (buffer-local-value 'auto-side-windows-side buffer)
+                        'right))))
+      (kill-buffer buffer)
+      (delete-other-windows))))
+
 (provide 'auto-side-windows-test)
 ;;; auto-side-windows-test.el ends here
