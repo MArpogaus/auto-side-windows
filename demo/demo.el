@@ -6,6 +6,11 @@
 (load-theme 'modus-vivendi t)
 (set-frame-font "Source Code Pro 13" nil t)
 (blink-cursor-mode -1)
+;; Visible boundaries between the main window and the side windows.
+(setq window-divider-default-places t
+      window-divider-default-right-width 2
+      window-divider-default-bottom-width 2)
+(window-divider-mode 1)
 (setq-default cursor-type 'bar)
 
 ;; The README example, boiled down to what the demo shows.
@@ -21,15 +26,21 @@
 (add-hook 'help-mode-hook #'visual-line-mode)
 
 (defvar demo--frame 0)
-(defvar demo--timer nil)
 (defun demo--snap ()
+  "Capture one frame.  Every frame is 0.1 s of the animation."
   (cl-incf demo--frame)
   (let ((coding-system-for-write 'binary))
     (write-region (x-export-frames nil 'png) nil
                   (format "/tmp/demo-asw/frames/f%04d.png" demo--frame)
                   nil 'quiet)))
+(defun demo--hold (seconds)
+  "Show the current state for SECONDS."
+  (dotimes (_ (round (* 10 seconds)))
+    (redisplay t)
+    (demo--snap)
+    (demo--hold 0.02)))
 (defun demo--type (s)
-  (dolist (c (string-to-list s)) (insert c) (sit-for 0.05)))
+  (dolist (c (string-to-list s)) (insert c) (redisplay t) (demo--snap)))
 
 (defun demo ()
   (switch-to-buffer "*scratch*")
@@ -46,16 +57,15 @@
   (goto-char (point-min))
   (redisplay t)
   (make-directory "/tmp/demo-asw/frames" t)
-  (setq demo--timer (run-with-timer 0 0.1 #'demo--snap))
-  (sit-for 2.5)
+    (demo--hold 2.5)
   ;; 1. help lands on the right
   (describe-function 'forward-line)
   (message nil)
-  (sit-for 4.0)
+  (demo--hold 4.0)
   ;; 2. occur lands on top
   (select-window (window-main-window))
   (occur "forward-line")
-  (sit-for 4.0)
+  (demo--hold 4.0)
   ;; 3. a shell lands at the bottom
   (select-window (window-main-window))
   ;; `eshell' insists on the selected window, so create the buffer
@@ -64,21 +74,21 @@
     (pop-to-buffer buffer))
   (demo--type "echo side windows")
   (eshell-send-input)
-  (sit-for 3.5)
+  (message nil)
+  (demo--hold 3.5)
   ;; 4. toggle: the help window becomes a normal window, and back
   (select-window (get-buffer-window "*Help*"))
-  (sit-for 1.5)
+  (demo--hold 1.5)
   (auto-side-windows-toggle-side-window)
-  (sit-for 3.5)
+  (demo--hold 3.5)
   (auto-side-windows-toggle-side-window)
-  (sit-for 3.0)
+  (demo--hold 3.0)
   ;; 5. side windows close like any window
   (dolist (b '("*Help*" "*Occur*"))
     (when-let* ((w (get-buffer-window b))) (delete-window w))
-    (sit-for 1.0))
-  (sit-for 2.0)
-  (cancel-timer demo--timer)
-  (write-region (format "frames=%d\n" demo--frame) nil "/tmp/demo-asw/done")
+    (demo--hold 1.0))
+  (demo--hold 2.0)
+    (write-region (format "frames=%d\n" demo--frame) nil "/tmp/demo-asw/done")
   (kill-emacs 0))
 (run-with-timer 1.0 nil
                 (lambda ()
