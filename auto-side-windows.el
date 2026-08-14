@@ -241,10 +241,6 @@ after the toggle action of a buffer in a side window."
   :group 'auto-side-windows)
 
 ;;;; Internal Variables
-(defvar auto-side-windows--side-window-functions nil
-  "List of functions added to `display-buffer-alist' by `auto-side-windows-mode'.
-These functions determine how buffers are displayed in side windows.")
-
 ;;;###autoload
 (defvar-local auto-side-windows-side nil
   "Side window this buffer belongs to, or nil to decide by the rules.
@@ -344,8 +340,8 @@ in that variable means no limit."
   "Custom display buffer function for `auto-side-windows-mode'.
 BUFFER is the buffer to display and ALIST contains display parameters.
 
-This function determines the appropriate side for the buffer and tries to
-displays BUFFER in the next free side window slot.
+This function determines the appropriate side for the buffer and
+tries to display BUFFER in the next free side window slot.
 If the BUFFER is already displayed in an existing window it is reused, even
 if not a side window.
 
@@ -358,9 +354,13 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
   (when-let* ((side (auto-side-windows--get-buffer-side buffer alist))
               (slot (auto-side-windows--get-next-free-slot side buffer)))
     (let* ((window-params (append auto-side-windows-common-window-parameters
-                                  (symbol-value (intern (format "auto-side-windows-%s-window-parameters" (symbol-name side))))))
+                                  (symbol-value
+                                   (intern (format "auto-side-windows-%s-window-parameters"
+                                                   side)))))
            (side-alist (append auto-side-windows-common-alist
-                               (symbol-value (intern (format "auto-side-windows-%s-alist" (symbol-name side))))))
+                               (symbol-value
+                               (intern (format "auto-side-windows-%s-alist"
+                                               side)))))
            (alist (append alist
                           side-alist
                           `((side . ,side)
