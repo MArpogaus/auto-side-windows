@@ -7,7 +7,6 @@
 [[https://github.com/MArpogaus/auto-side-windows/issues][https://img.shields.io/github/issues/MArpogaus/auto-side-windows.svg?style=flat-square]]
 [[https://github.com/MArpogaus/auto-side-windows/blob/main/COPYING][https://img.shields.io/github/license/MArpogaus/auto-side-windows.svg?style=flat-square]]
 [[https://github.com/MArpogaus/auto-side-windows/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/MArpogaus/auto-side-windows/test.yml.svg?branch=main&label=tests&style=flat-square]]
-[[https://melpa.org/#/auto-side-windows][https://melpa.org/packages/auto-side-windows-badge.svg?style=flat-square]]
 [[https://linkedin.com/in/MArpogaus][https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555]]
 
 * auto-side-windows :TOC_3_gh:noexport:
@@ -236,7 +235,7 @@ The package provides the following commands:
 - =auto-side-windows-mode=: Global minor mode. Enable this to activate the automatic side window management based on your rules.
 - =auto-side-windows-toggle-side-window=: If the current buffer is in a side window created by this package, move it to a normal window. If it was just moved out, move it back to its side window configuration. Useful for temporarily maximizing a side window buffer.
 - =auto-side-windows-display-buffer-{top,bottom,left,right}=: Manually force the current buffer to be displayed in a side window on the specified side, overriding normal rules.
-- =auto-side-windows-display-buffer-on-side=: Manually force the current buffer to be displayed in a side window on the specified side, overriding normal rules. Compared to the command above the user is prompted side in the minibuffer.
+- =auto-side-windows-display-buffer-on-side=: Manually force the current buffer to be displayed in a side window on the specified side, overriding normal rules. Compared to the commands above, it asks for the side in the minibuffer.
 - =auto-side-windows-switch-to-buffer=: Switch to a side buffer. The option =switch-to-buffer-obey-display-actions= should be customized to a non-nil value to respect the display buffer actions defined by this package.
 
 ** Integration with Other Packages
