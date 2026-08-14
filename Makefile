@@ -5,6 +5,9 @@
 #   make lint      package-lint, the MELPA rules
 #   make test      ERT test suite
 #   make clean     remove build output and the tool sandbox
+#
+# The checks install their tools and this package's dependencies into
+# $(SANDBOX), so a fresh checkout needs nothing but Emacs and make.
 
 EMACS   ?= emacs
 SANDBOX ?= .sandbox
@@ -12,8 +15,6 @@ DEPS    ?= package-lint
 
 SRC  := $(filter-out %-autoloads.el %-pkg.el,$(wildcard *.el))
 TEST := $(wildcard test/*.el)
-
-BATCH = $(EMACS) -Q --batch -L . -L test -L $(SANDBOX)
 
 # Elisp programs live in variables: make joins their continuation lines,
 # while a backslash inside a quoted recipe line would reach Emacs as is.
@@ -29,6 +30,8 @@ checkdoc = (progn (require (quote checkdoc)) \
                   (setq checkdoc-verb-check-experimental-flag nil) \
                   (dolist (f command-line-args-left) (checkdoc-file f)))
 
+BATCH = $(EMACS) -Q --batch -L . -L test --eval '$(init)'
+
 .PHONY: all compile checkdoc lint test clean
 
 all: compile checkdoc lint test
@@ -36,7 +39,7 @@ all: compile checkdoc lint test
 $(SANDBOX):
 	@$(EMACS) -Q --batch --eval '$(init)' --eval '$(bootstrap)'
 
-compile:
+compile: $(SANDBOX)
 	@$(BATCH) --eval '(setq byte-compile-error-on-warn t)' \
 	  -f batch-byte-compile $(SRC) $(TEST)
 	@rm -f ./*.elc test/*.elc
@@ -48,9 +51,9 @@ checkdoc:
 	  if [ -n "$$out" ]; then printf '%s\n' "$$out"; exit 1; fi
 
 lint: $(SANDBOX)
-	@$(BATCH) --eval '$(init)' -f package-lint-batch-and-exit $(SRC)
+	@$(BATCH) -f package-lint-batch-and-exit $(SRC)
 
-test:
+test: $(SANDBOX)
 	@$(BATCH) $(addprefix -l ,$(TEST)) -f ert-run-tests-batch-and-exit
 
 clean:
