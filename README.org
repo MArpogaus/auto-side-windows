@@ -37,7 +37,11 @@
 
 ** About The Project
 
-[[file:screenshot.png]]
+[[file:img/demo.gif]]
+
+Help opens on the right, occur on top, the shell at the bottom, and
+the editing area in the middle stays put.  One command detaches a
+side window into a normal one and puts it back.
 
 *** Motivation
 
