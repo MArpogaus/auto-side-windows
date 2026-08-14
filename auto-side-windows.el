@@ -244,6 +244,20 @@ after the toggle action of a buffer in a side window."
   "List of functions added to `display-buffer-alist' by `auto-side-windows-mode'.
 These functions determine how buffers are displayed in side windows.")
 
+;;;###autoload
+(defvar-local auto-side-windows-side nil
+  "Side window this buffer belongs to, or nil to decide by the rules.
+Set it as a file-local variable to pin a buffer to one side.  The
+display function also sets it, so the buffer remembers where it went.")
+
+;;;###autoload
+(put 'auto-side-windows-side 'safe-local-variable
+     (lambda (v) (memq v '(nil left right top bottom))))
+
+(defvar-local auto-side-windows--detached nil
+  "Non-nil when the user detached this buffer from its side window.
+See `auto-side-windows-toggle-side-window'.")
+
 ;;;; Helper Functions
 (defun auto-side-windows--buffer-match-condition (majormodes &optional buffernames extra-conds)
   "Get condition to match buffers with given MAJORMODES or BUFFERNAMES.
@@ -257,18 +271,17 @@ additional conditions to refine the matching process."
 
 (defun auto-side-windows--get-buffer-side (buffer &optional alist)
   "Determine which side BUFFER should be displayed in.
-This function checks the buffer against user-defined conditions relative to the
-side windows.  It returns `'top', `'bottom', `'left', or `'right',or nil if no
-conditions are met.
+This function checks the buffer against user-defined conditions relative
+to the side windows.  It returns \\='top, \\='bottom, \\='left, \\='right
+or \\='detached, and nil if no condition matches.
 Optional ALIST may contain a specific side."
   (with-current-buffer buffer
     (cond
-     ((local-variable-if-set-p 'detached-side-window buffer)
-      'detached)
+     (auto-side-windows--detached 'detached)
      ((assq 'side alist)
       (alist-get 'side alist))
-     ((boundp 'auto-side-windows-side)
-      auto-side-windows-side)
+     ;; A file-local setting, or the side this buffer went to before.
+     (auto-side-windows-side)
      ((buffer-match-p (auto-side-windows--buffer-match-condition
                        auto-side-windows-top-buffer-modes
                        auto-side-windows-top-buffer-names
@@ -296,41 +309,35 @@ Optional ALIST may contain a specific side."
      (t nil))))
 
 (defun auto-side-windows--get-next-free-slot (side buffer)
-  "Return the next free slot number for SIDE.
-Each side window can have multiple slots numbered from 0 to MAX-SLOTS-1.
-This function finds and returns the next available slot number for use.
+  "Return the slot number to display BUFFER in on SIDE.
+Slots are numbered from zero.  Side windows showing a buffer with the
+same major mode as BUFFER are reused when
+`auto-side-windows-reuse-mode-window' is non-nil for SIDE; the lowest
+such slot wins.  Otherwise the lowest free slot is returned.
 
-If `auto-side-windows-reuse-mode-window' is t for SIDE, return the slot number
-of the first side window containing a buffer with the same major mode as BUFFER.
-
-If no free slot is found return MAX-SLOTS-1."
+When `window-sides-slots' limits the number of slots on SIDE and all of
+them are taken, the last slot is returned and thus reused.  A nil entry
+in that variable means no limit."
   (unless (eq side 'detached)
-    (let* ((max-slots (nth (cond ((eq side 'left) 0)
-                                 ((eq side 'top) 1)
-                                 ((eq side 'right) 2)
-                                 ((eq side 'bottom) 3))
+    (let* ((max-slots (nth (pcase side ('left 0) ('top 1) ('right 2) ('bottom 3))
                            window-sides-slots))
-           (buffer-mode (with-current-buffer buffer major-mode))
-           (major-mode-slot max-slots)
-           used-slots)
-      ;; Collect used slots
+           (buffer-mode (buffer-local-value 'major-mode buffer))
+           (reuse (alist-get side auto-side-windows-reuse-mode-window))
+           used-slots mode-slot)
       (dolist (win (window-list))
-        (when (equal (window-parameter win 'window-side) side)
+        (when (eq (window-parameter win 'window-side) side)
           (when-let* ((slot (window-parameter win 'window-slot)))
-            (push slot used-slots) ;; collect all used slots
-            ;; when reused mode window is enabled for this side
-            ;; use the first used slot with a derived major mode
-            (when (and (alist-get side auto-side-windows-reuse-mode-window)
-                       (equal buffer-mode (with-selected-window win major-mode)))
-              (setq major-mode-slot (min major-mode-slot slot))))))
-
-      ;; Find the next free slot
-      (if-let* ((next-slot (if (< major-mode-slot max-slots) major-mode-slot
-                            (catch 'next-slot
-                              (dotimes (i max-slots)
-                                (unless (member i used-slots)
-                                  (throw 'next-slot i)))))))
-          next-slot (1- max-slots)))))
+            (push slot used-slots)
+            (when (and reuse
+                       (eq buffer-mode
+                           (buffer-local-value 'major-mode (window-buffer win))))
+              (setq mode-slot (if mode-slot (min mode-slot slot) slot))))))
+      (or mode-slot
+          (let ((slot 0))
+            (while (and (memq slot used-slots)
+                        (or (null max-slots) (< slot (1- max-slots))))
+              (setq slot (1+ slot)))
+            slot)))))
 
 (defun auto-side-windows--display-buffer (buffer alist)
   "Custom display buffer function for `auto-side-windows-mode'.
@@ -394,15 +401,13 @@ After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
         (run-hook-with-args 'auto-side-windows-before-toggle-hook buffer)
         (cond
          ((window-parameter window 'window-side)
-          (progn
-            (setq-local detached-side-window t)
-            (delete-window window)
-            (display-buffer buffer '(nil . ((some-window . mru))))))
-         ((local-variable-if-set-p 'detached-side-window buffer)
-          (progn
-            (kill-local-variable 'detached-side-window)
-            (switch-to-prev-buffer window 'bury)
-            (display-buffer buffer '(nil . ((post-command-select-window . t))))))
+          (setq-local auto-side-windows--detached t)
+          (delete-window window)
+          (display-buffer buffer '(nil . ((some-window . mru)))))
+         (auto-side-windows--detached
+          (kill-local-variable 'auto-side-windows--detached)
+          (switch-to-prev-buffer window 'bury)
+          (display-buffer buffer '(nil . ((post-command-select-window . t)))))
          (t
           (error "Not a side window")))
         (run-hook-with-args 'auto-side-windows-after-toggle-hook buffer)))))
@@ -412,17 +417,18 @@ After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
 This command explicitly places the buffer in the specified side window.
 It runs `auto-side-windows-before-display-hook' before displaying the buffer
 and `auto-side-windows-after-display-hook' after."
-  (interactive (list (intern (completing-read "Select side: " '("left" "right" "top" "bottom")))))
-  (let ((buffer (current-buffer)))
-    (if-let* ((window (selected-window))
-              (window-side (window-parameter window 'window-side)))
+  (interactive
+   (list (intern (completing-read "Select side: "
+                                  '("left" "right" "top" "bottom") nil t))))
+  (let ((buffer (current-buffer))
+        (window (selected-window)))
+    (if (window-parameter window 'window-side)
         (delete-window window)
       (with-current-buffer buffer
-        (progn
-          (kill-local-variable 'detached-side-window)
-          (switch-to-prev-buffer window 'bury))))
+        (kill-local-variable 'auto-side-windows--detached))
+      (switch-to-prev-buffer window 'bury))
     (display-buffer buffer `(nil . ((side . ,side)
-              (post-command-select-window . t))))))
+                                    (post-command-select-window . t))))))
 
 (defun auto-side-windows-display-buffer-top ()
   "Display the current buffer in a top side window."
