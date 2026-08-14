@@ -5,7 +5,9 @@
 [[https://github.com/MArpogaus/auto-side-windows/network/members][https://img.shields.io/github/forks/MArpogaus/auto-side-windows.svg?style=flat-square]]
 [[https://github.com/MArpogaus/auto-side-windows/stargazers][https://img.shields.io/github/stars/MArpogaus/auto-side-windows.svg?style=flat-square]]
 [[https://github.com/MArpogaus/auto-side-windows/issues][https://img.shields.io/github/issues/MArpogaus/auto-side-windows.svg?style=flat-square]]
-[[https://github.com/MArpogaus/auto-side-windows/blob/main/LICENSE][https://img.shields.io/github/license/MArpogaus/auto-side-windows.svg?style=flat-square]]
+[[https://github.com/MArpogaus/auto-side-windows/blob/main/COPYING][https://img.shields.io/github/license/MArpogaus/auto-side-windows.svg?style=flat-square]]
+[[https://github.com/MArpogaus/auto-side-windows/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/MArpogaus/auto-side-windows/test.yml?branch=main&style=flat-square&label=tests]]
+[[https://melpa.org/#/auto-side-windows][https://melpa.org/packages/auto-side-windows-badge.svg?style=flat-square]]
 [[https://linkedin.com/in/MArpogaus][https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555]]
 
 * auto-side-windows :TOC_3_gh:noexport:
@@ -15,6 +17,7 @@
     - [[#inspirations][Inspirations]]
   - [[#getting-started][Getting Started]]
     - [[#prerequisites][Prerequisites]]
+    - [[#installation][Installation]]
     - [[#example-configuration][Example Configuration]]
   - [[#usage][Usage]]
   - [[#customization][Customization]]
@@ -82,6 +85,16 @@ Thank you all!
 *** Prerequisites
 
 - Emacs 30.1 or later.
+
+*** Installation
+
+Once the package is on MELPA, install it with the built in package
+manager, and configure it as shown below:
+
+#+begin_src emacs-lisp
+  (use-package auto-side-windows
+    :ensure t)
+#+end_src
 
 *** Example Configuration
 
