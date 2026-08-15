@@ -107,30 +107,30 @@ it will be shown in the right side window."
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-top-extra-conditions nil
-  "Lists of extra conditions to match top buffers.
-These extra conditions are checked along with buffer name and major mode
-rules to determine if a buffer should be displayed in a top side window."
+  "Extra conditions that send a buffer to a top side window.
+Any condition `buffer-match-p' accepts works; a buffer matching one of
+them goes to this side, in addition to the name and mode rules."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-bottom-extra-conditions nil
-  "Lists of extra conditions to match bottom buffers.
-These extra conditions are checked along with buffer name and major mode
-rules to determine if a buffer should be displayed in a bottom side window."
+  "Extra conditions that send a buffer to a bottom side window.
+Any condition `buffer-match-p' accepts works; a buffer matching one of
+them goes to this side, in addition to the name and mode rules."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-left-extra-conditions nil
-  "Lists of extra conditions to match left buffers.
-These extra conditions are checked along with buffer name and major mode
-rules to determine if a buffer should be displayed in a left side window."
+  "Extra conditions that send a buffer to a left side window.
+Any condition `buffer-match-p' accepts works; a buffer matching one of
+them goes to this side, in addition to the name and mode rules."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-right-extra-conditions nil
-  "Lists of extra conditions to match right buffers.
-These extra conditions are checked along with buffer name and major mode
-rules to determine if a buffer should be displayed in a right side window."
+  "Extra conditions that send a buffer to a right side window.
+Any condition `buffer-match-p' accepts works; a buffer matching one of
+them goes to this side, in addition to the name and mode rules."
   :type '(repeat symbol)
   :group 'auto-side-windows)
 
@@ -241,10 +241,6 @@ after the toggle action of a buffer in a side window."
   :group 'auto-side-windows)
 
 ;;;; Internal Variables
-(defvar auto-side-windows--side-window-functions nil
-  "List of functions added to `display-buffer-alist' by `auto-side-windows-mode'.
-These functions determine how buffers are displayed in side windows.")
-
 ;;;###autoload
 (defvar-local auto-side-windows-side nil
   "Side window this buffer belongs to, or nil to decide by the rules.
@@ -344,8 +340,8 @@ in that variable means no limit."
   "Custom display buffer function for `auto-side-windows-mode'.
 BUFFER is the buffer to display and ALIST contains display parameters.
 
-This function determines the appropriate side for the buffer and tries to
-displays BUFFER in the next free side window slot.
+This function determines the appropriate side for the buffer and
+tries to display BUFFER in the next free side window slot.
 If the BUFFER is already displayed in an existing window it is reused, even
 if not a side window.
 
@@ -354,13 +350,19 @@ window containing a buffer with the same major mode is used.
 If no free slot is found, the largest allowed slot number is used.
 
 Before displaying the buffer, it runs `auto-side-windows-before-display-hook'.
-After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
+After displaying it in a side window, it runs
+`auto-side-windows-after-display-hook'.  A reused ordinary window gets
+neither that hook nor a side to remember: the buffer went to no side."
   (when-let* ((side (auto-side-windows--get-buffer-side buffer alist))
               (slot (auto-side-windows--get-next-free-slot side buffer)))
     (let* ((window-params (append auto-side-windows-common-window-parameters
-                                  (symbol-value (intern (format "auto-side-windows-%s-window-parameters" (symbol-name side))))))
+                                  (symbol-value
+                                   (intern (format "auto-side-windows-%s-window-parameters"
+                                                   side)))))
            (side-alist (append auto-side-windows-common-alist
-                               (symbol-value (intern (format "auto-side-windows-%s-alist" (symbol-name side))))))
+                               (symbol-value
+                               (intern (format "auto-side-windows-%s-alist"
+                                               side)))))
            (alist (append alist
                           side-alist
                           `((side . ,side)
@@ -369,9 +371,15 @@ After displaying the buffer, it runs `auto-side-windows-after-display-hook'."
       (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
       (let ((window (or (get-buffer-window buffer nil)
                         (display-buffer-in-side-window buffer alist))))
-        (with-current-buffer buffer
-          (setq-local auto-side-windows-side side))
-        (run-hook-with-args 'auto-side-windows-after-display-hook buffer window)
+        ;; The reused window may be an ordinary one.  Then the buffer
+        ;; went to no side and must not claim one, and the hook must
+        ;; not run: it is there to dress a side window, and it would
+        ;; be dressing a plain split.
+        (when (window-parameter window 'window-side)
+          (with-current-buffer buffer
+            (setq-local auto-side-windows-side side))
+          (run-hook-with-args 'auto-side-windows-after-display-hook
+                              buffer window))
         window))))
 
 (defun auto-side-windows--group-function (candidate transform)

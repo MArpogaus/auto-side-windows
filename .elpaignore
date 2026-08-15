@@ -2,5 +2,7 @@
 .elpaignore
 .github
 Makefile
+demo
+img
 screenshot.png
 test
