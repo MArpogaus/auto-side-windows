@@ -7,7 +7,6 @@
 [[https://github.com/MArpogaus/auto-side-windows/issues][https://img.shields.io/github/issues/MArpogaus/auto-side-windows.svg?style=flat-square]]
 [[https://github.com/MArpogaus/auto-side-windows/blob/main/COPYING][https://img.shields.io/github/license/MArpogaus/auto-side-windows.svg?style=flat-square]]
 [[https://github.com/MArpogaus/auto-side-windows/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/MArpogaus/auto-side-windows/test.yml.svg?branch=main&label=tests&style=flat-square]]
-[[https://melpa.org/#/auto-side-windows][https://melpa.org/packages/auto-side-windows-badge.svg?style=flat-square]]
 [[https://linkedin.com/in/MArpogaus][https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555]]
 
 * auto-side-windows :TOC_3_gh:noexport:
@@ -30,14 +29,18 @@
     - [[#shackle][Shackle]]
     - [[#popper][Popper]]
     - [[#core-emacs-display-buffer-alist][Core Emacs (=display-buffer-alist=)]]
-  - [[#bonus-boxes-around-top-windows][Bonus: Boxes around top windows]]
+  - [[#bonus-boxes-around-side-windows][Bonus: Boxes around side windows]]
   - [[#contributions][Contributions]]
   - [[#license][License]]
   - [[#contact][Contact]]
 
 ** About The Project
 
-[[file:screenshot.png]]
+[[file:img/demo.gif]]
+
+Help opens on the right, occur on top, the shell at the bottom, and
+the editing area in the middle stays put.  One command detaches a
+side window into a normal one and puts it back.
 
 *** Motivation
 
@@ -98,7 +101,32 @@ manager, and configure it as shown below:
 
 *** Example Configuration
 
-Here’s an example configuration using =use-package=:
+A minimal, working setup — the demo above runs on exactly this:
+
+#+begin_src emacs-lisp
+  (use-package auto-side-windows
+    :ensure t
+    :custom
+    ;; Buffers move to a side when `switch-to-buffer' shows them too.
+    (switch-to-buffer-obey-display-actions t)
+    ;; Where buffers go, by major mode: help right, occur top,
+    ;; shells bottom.
+    (auto-side-windows-right-buffer-modes '(help-mode))
+    (auto-side-windows-top-buffer-modes '(occur-mode))
+    (auto-side-windows-bottom-buffer-modes '(eshell-mode shell-mode))
+    ;; Reasonable sizes for the sides in use.
+    (auto-side-windows-right-alist '((window-width . 46)))
+    (auto-side-windows-bottom-alist '((window-height . 12)))
+    :hook (after-init . auto-side-windows-mode))
+#+end_src
+
+Open a help buffer (=C-h f=), run =M-x occur= or start =eshell=, and
+each lands on its side while the editing area stays put.
+=auto-side-windows-toggle-side-window= detaches the current side
+window into a normal one, and puts it back.
+
+A complete configuration with more rules, window parameters and
+keybindings:
 
 #+begin_src emacs-lisp
   (use-package auto-side-windows
@@ -207,7 +235,7 @@ The package provides the following commands:
 - =auto-side-windows-mode=: Global minor mode. Enable this to activate the automatic side window management based on your rules.
 - =auto-side-windows-toggle-side-window=: If the current buffer is in a side window created by this package, move it to a normal window. If it was just moved out, move it back to its side window configuration. Useful for temporarily maximizing a side window buffer.
 - =auto-side-windows-display-buffer-{top,bottom,left,right}=: Manually force the current buffer to be displayed in a side window on the specified side, overriding normal rules.
-- =auto-side-windows-display-buffer-on-side=: Manually force the current buffer to be displayed in a side window on the specified side, overriding normal rules. Compared to the command above the user is prompted side in the minibuffer.
+- =auto-side-windows-display-buffer-on-side=: Manually force the current buffer to be displayed in a side window on the specified side, overriding normal rules. Compared to the commands above, it asks for the side in the minibuffer.
 - =auto-side-windows-switch-to-buffer=: Switch to a side buffer. The option =switch-to-buffer-obey-display-actions= should be customized to a non-nil value to respect the display buffer actions defined by this package.
 
 ** Integration with Other Packages
@@ -330,72 +358,18 @@ Emacs' built-in =display-buffer-alist= is the underlying mechanism for controlli
 
 *Difference:* =auto-side-windows= acts as a configuration layer *on top of* =display-buffer-alist=. It generates the necessary alist entries for side window rules based on user-friendly customization variables, reducing the need to write the raw alist entries manually for this common pattern.
 
-** Bonus: Boxes around top windows
+** Bonus: Boxes around side windows
 
-Inspired by [[https://www.reddit.com/r/emacs/comments/1hoehaa/boxes_everywhere/][u/Nicolas-Rougier's post]], you can add customized header lines to side windows for better visual distinction.
-To resemble the example shown in the screenshot add this to your configuration:
+The face remapping recipe that used to live here grew into a package
+of its own: [[https://github.com/MArpogaus/window-box][window-box]] draws a rectangular box around a window and
+leaves the mode line and the header line alone.  Boxing everything
+that lands in a side window is one hook:
 
 #+begin_src emacs-lisp
-  (use-package auto-side-windows
-    :ensure (:host github :repo "MArpogaus/auto-side-windows")
-    :preface
-    (defun my/get-header-line-icon-for-buffer (buffer)
-      (with-current-buffer buffer
-        (unless (boundp 'header-line-icon)
-          (setq-local header-line-icon
-                      (cond
-                       ((buffer-match-p "Warning" buffer) '("  !  " . warning))
-                       ((buffer-match-p '(or "^\\*Backtrace\\*$" ".*[Ee]rror.*") buffer) '("  !  " . error))
-                       ((buffer-match-p '(or "^COMMIT_EDITMSG$" "^\\*diff-hl\\*$") buffer) '("    " . success))
-                       ((buffer-match-p "^\\*Org Src.*\\*" buffer) '("     " . mode-line-emphasis))
-                       ((buffer-match-p "^\\*Org Agenda\\*$" buffer) '("    " . mode-line-emphasis))
-                       (t '("  ?  " . mode-line-emphasis)))))
-        header-line-icon))
-    (defun my/install-top-side-window-face-remaps (buffer foreground background)
-      (with-current-buffer buffer
-        (unless (bound-and-true-p top-side-window-face-remaps-cookies)
-          (setq-local top-side-window-face-remaps-cookies
-                      (list
-                       (face-remap-add-relative 'header-line
-                                                `(:box nil :underline nil :overline ,background))
-                       (face-remap-add-relative 'fringe
-                                                `(:background ,background))
-                       (face-remap-add-relative 'mode-line-active
-                                                `(:overline ,background :underline nil :height 0))
-                       (face-remap-add-relative 'mode-line-inactive
-                                                `(:overline ,background :underline nil :height 0))
-                       )))))
-    (defvar my/header-line-format-top
-      '(:eval
-        (let*
-            ((buffer (current-buffer))
-             (prefix-and-face (my/get-header-line-icon-for-buffer buffer))
-             (prefix (car prefix-and-face))
-             (background (face-foreground (cdr prefix-and-face)))
-             (foreground (face-background (cdr prefix-and-face) nil 'default))
-             (prefix-face (list :inherit 'bold :background background :foreground foreground))
-             (buffer-face (list :inherit 'bold :foreground background)))
-          (set-window-fringes nil 1 1 t)
-          (my/install-top-side-window-face-remaps buffer foreground background)
-          (list
-           (propertize prefix 'face prefix-face 'display '(space-width 0.7))
-           (propertize (format-mode-line " %b ") 'face buffer-face)
-           (propertize " " 'display `(space :align-to right))
-           (propertize " " 'face prefix-face 'display '(space-width 1))))))
-    :custom
-    ;; Draw boxes around top side windows
-    (auto-side-windows-top-window-parameters `((mode-line-format . t)
-                                               (header-line-format . ,my/header-line-format-top)))
-    (auto-side-windows-before-display-hook '((lambda (buffer)
-                                               (with-current-buffer buffer
-                                                 (when (bound-and-true-p top-side-window-face-remaps-cookies)
-                                                   (dolist (cookie top-side-window-face-remaps-cookies)
-                                                     (face-remap-remove-relative cookie))
-                                                   (kill-local-variable 'top-side-window-face-remaps-cookies))))))
-    (auto-side-windows-before-toggle-hook auto-side-windows-before-display-hook))
+  (add-hook 'auto-side-windows-after-display-hook
+            (lambda (buffer &rest _)
+              (with-current-buffer buffer (window-box-mode 1))))
 #+end_src
-
-*Note:* Complex face remapping in header lines might have side effects (e.g., affecting Corfu popup fringes).
 
 ** Contributions
 

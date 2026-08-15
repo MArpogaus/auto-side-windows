@@ -1,0 +1,23 @@
+* Demo Recording
+
+=img/demo.gif= is recorded from a real Emacs, without a screen
+recorder: =demo.el= drives a scripted session and captures one frame
+per tenth of a second through =x-export-frames=.
+
+#+begin_src shell
+  Xvfb :99 -screen 0 1280x900x24 &   # when there is no display
+  DISPLAY=:99 emacs -Q -l demo.el    # writes frames to /tmp
+#+end_src
+
+Build the animation from the frames:
+
+#+begin_src shell
+  ffmpeg -framerate 13 -start_number 1 -i frames/f%04d.png \
+      -filter_complex "[0:v]scale=820:-1:flags=lanczos,split[a][b];\
+                       [a]palettegen=max_colors=128[p];[b][p]paletteuse" \
+      -loop 0 raw.gif
+  gifsicle -O3 --lossy=80 raw.gif -o ../img/demo.gif
+#+end_src
+
+Never resample the frame rate afterwards: dropping every few frames
+makes the motion stutter.
