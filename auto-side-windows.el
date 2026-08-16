@@ -110,28 +110,28 @@ it will be shown in the right side window."
   "Extra conditions that send a buffer to a top side window.
 Any condition `buffer-match-p' accepts works; a buffer matching one of
 them goes to this side, in addition to the name and mode rules."
-  :type '(repeat symbol)
+  :type '(repeat sexp)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-bottom-extra-conditions nil
   "Extra conditions that send a buffer to a bottom side window.
 Any condition `buffer-match-p' accepts works; a buffer matching one of
 them goes to this side, in addition to the name and mode rules."
-  :type '(repeat symbol)
+  :type '(repeat sexp)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-left-extra-conditions nil
   "Extra conditions that send a buffer to a left side window.
 Any condition `buffer-match-p' accepts works; a buffer matching one of
 them goes to this side, in addition to the name and mode rules."
-  :type '(repeat symbol)
+  :type '(repeat sexp)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-right-extra-conditions nil
   "Extra conditions that send a buffer to a right side window.
 Any condition `buffer-match-p' accepts works; a buffer matching one of
 them goes to this side, in addition to the name and mode rules."
-  :type '(repeat symbol)
+  :type '(repeat sexp)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-top-window-parameters nil
