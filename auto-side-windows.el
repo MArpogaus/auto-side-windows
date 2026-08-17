@@ -483,12 +483,14 @@ The option `switch-to-buffer-obey-display-actions' should be customized to a
 non-nil value to respect the display buffer actions defined by this package."
   (interactive
    (list
-    (when-let* ((side-buffers (seq-filter 'auto-side-windows--get-buffer-side (buffer-list)))
-               (pred (lambda (b)
-                       (setq b (get-buffer (if (consp b) (car b) b)))
-                       (member b side-buffers)))
-               ;; Add annotation via completion-extra-properties
-               (completion-extra-properties (list :group-function #'auto-side-windows--group-function)))
+    (when-let* ((side-buffers (seq-filter #'auto-side-windows--get-buffer-side
+                                          (buffer-list)))
+                (pred (lambda (b)
+                        (setq b (get-buffer (if (consp b) (car b) b)))
+                        (member b side-buffers)))
+                ;; the annotation, through `completion-extra-properties'
+                (completion-extra-properties
+                 (list :group-function #'auto-side-windows--group-function)))
       (read-buffer "Switch to side buffer: " nil t pred))))
   (if buffer (switch-to-buffer buffer)
     (message "No side buffers.")))
