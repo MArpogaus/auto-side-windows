@@ -7,7 +7,7 @@
 [[https://github.com/MArpogaus/auto-side-windows/issues][https://img.shields.io/github/issues/MArpogaus/auto-side-windows.svg?style=flat-square]]
 [[https://github.com/MArpogaus/auto-side-windows/blob/main/COPYING][https://img.shields.io/github/license/MArpogaus/auto-side-windows.svg?style=flat-square]]
 [[https://github.com/MArpogaus/auto-side-windows/actions/workflows/test.yml][https://img.shields.io/github/actions/workflow/status/MArpogaus/auto-side-windows/test.yml.svg?branch=main&label=tests&style=flat-square]]
-[[https://melpa.org/#/auto-side-windows][https://melpa.org/packages/auto-side-windows-badge.svg]]
+[[https://melpa.org/#/auto-side-windows][https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fmelpa.org%2Farchive.json&query=%24%5B%27auto-side-windows%27%5D.ver%5B0%5D&label=melpa&style=flat-square]]
 [[https://linkedin.com/in/MArpogaus][https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555]]
 
 * auto-side-windows :TOC_3_gh:noexport:
