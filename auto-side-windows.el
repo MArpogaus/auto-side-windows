@@ -413,6 +413,7 @@ function returns the candidate name."
       (format "%s" side))))
 
 ;;;; Commands
+;;;###autoload
 (defun auto-side-windows-toggle-side-window ()
   "Toggle the current buffer as a side window.
 If the current window is already a side window, it will delete
@@ -439,6 +440,7 @@ After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
           (error "Not a side window")))
         (run-hook-with-args 'auto-side-windows-after-toggle-hook buffer)))))
 
+;;;###autoload
 (defun auto-side-windows-display-buffer-on-side (side)
   "Display the current buffer in a window on SIDE.
 This command explicitly places the buffer in the specified side window.
@@ -457,26 +459,31 @@ and `auto-side-windows-after-display-hook' after."
     (display-buffer buffer `(nil . ((side . ,side)
                                     (post-command-select-window . t))))))
 
+;;;###autoload
 (defun auto-side-windows-display-buffer-top ()
   "Display the current buffer in a top side window."
   (interactive)
   (auto-side-windows-display-buffer-on-side 'top))
 
+;;;###autoload
 (defun auto-side-windows-display-buffer-bottom ()
   "Display the current buffer in a bottom side window."
   (interactive)
   (auto-side-windows-display-buffer-on-side 'bottom))
 
+;;;###autoload
 (defun auto-side-windows-display-buffer-left ()
   "Display the current buffer in a left side window."
   (interactive)
   (auto-side-windows-display-buffer-on-side 'left))
 
+;;;###autoload
 (defun auto-side-windows-display-buffer-right ()
   "Display the current buffer in a right side window."
   (interactive)
   (auto-side-windows-display-buffer-on-side 'right))
 
+;;;###autoload
 (defun auto-side-windows-switch-to-buffer (buffer)
   "Switch to side BUFFER.
 The option `switch-to-buffer-obey-display-actions' should be customized to a
