@@ -110,28 +110,28 @@ it will be shown in the right side window."
   "Extra conditions that send a buffer to a top side window.
 Any condition `buffer-match-p' accepts works; a buffer matching one of
 them goes to this side, in addition to the name and mode rules."
-  :type '(repeat symbol)
+  :type '(repeat sexp)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-bottom-extra-conditions nil
   "Extra conditions that send a buffer to a bottom side window.
 Any condition `buffer-match-p' accepts works; a buffer matching one of
 them goes to this side, in addition to the name and mode rules."
-  :type '(repeat symbol)
+  :type '(repeat sexp)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-left-extra-conditions nil
   "Extra conditions that send a buffer to a left side window.
 Any condition `buffer-match-p' accepts works; a buffer matching one of
 them goes to this side, in addition to the name and mode rules."
-  :type '(repeat symbol)
+  :type '(repeat sexp)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-right-extra-conditions nil
   "Extra conditions that send a buffer to a right side window.
 Any condition `buffer-match-p' accepts works; a buffer matching one of
 them goes to this side, in addition to the name and mode rules."
-  :type '(repeat symbol)
+  :type '(repeat sexp)
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-top-window-parameters nil
@@ -336,6 +336,26 @@ in that variable means no limit."
               (setq slot (1+ slot)))
             slot)))))
 
+(defconst auto-side-windows--side-options
+  '((top    auto-side-windows-top-window-parameters
+            auto-side-windows-top-alist)
+    (bottom auto-side-windows-bottom-window-parameters
+            auto-side-windows-bottom-alist)
+    (left   auto-side-windows-left-window-parameters
+            auto-side-windows-left-alist)
+    (right  auto-side-windows-right-window-parameters
+            auto-side-windows-right-alist))
+  "The options of each side: the window parameters and the action alist.
+The names are written out rather than made from the side, so the
+compiler reads them and a search finds them.")
+
+(defun auto-side-windows--side-option (side part)
+  "Return the value of the option of SIDE that PART names.
+PART is `parameters\=' for the window parameters, or `alist\=' for the
+action alist."
+  (when-let* ((entry (assq side auto-side-windows--side-options)))
+    (symbol-value (nth (if (eq part 'parameters) 1 2) entry))))
+
 (defun auto-side-windows--display-buffer (buffer alist)
   "Custom display buffer function for `auto-side-windows-mode'.
 BUFFER is the buffer to display and ALIST contains display parameters.
@@ -355,14 +375,12 @@ After displaying it in a side window, it runs
 neither that hook nor a side to remember: the buffer went to no side."
   (when-let* ((side (auto-side-windows--get-buffer-side buffer alist))
               (slot (auto-side-windows--get-next-free-slot side buffer)))
-    (let* ((window-params (append auto-side-windows-common-window-parameters
-                                  (symbol-value
-                                   (intern (format "auto-side-windows-%s-window-parameters"
-                                                   side)))))
-           (side-alist (append auto-side-windows-common-alist
-                               (symbol-value
-                               (intern (format "auto-side-windows-%s-alist"
-                                               side)))))
+    (let* ((window-params
+            (append auto-side-windows-common-window-parameters
+                    (auto-side-windows--side-option side 'parameters)))
+           (side-alist
+            (append auto-side-windows-common-alist
+                    (auto-side-windows--side-option side 'alist)))
            (alist (append alist
                           side-alist
                           `((side . ,side)

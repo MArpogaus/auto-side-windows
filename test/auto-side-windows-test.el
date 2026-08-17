@@ -150,5 +150,21 @@ it is there to dress a side window."
       (kill-buffer buffer)
       (delete-other-windows))))
 
+(ert-deftest auto-side-windows-test-side-options-cover-each-side ()
+  "Each side has its window parameters and its action alist.
+The names are written out, so a side that gains an option and forgets
+the table is a test failure and not a nil at display time."
+  (dolist (side '(top bottom left right))
+    (let ((auto-side-windows-top-alist '((window-height . 7)))
+          (auto-side-windows-top-window-parameters '((no-other-window . t))))
+      (should (assq side auto-side-windows--side-options))
+      (should (boundp (nth 1 (assq side auto-side-windows--side-options))))
+      (should (boundp (nth 2 (assq side auto-side-windows--side-options))))
+      (when (eq side 'top)
+        (should (equal (auto-side-windows--side-option side 'alist)
+                       '((window-height . 7))))
+        (should (equal (auto-side-windows--side-option side 'parameters)
+                       '((no-other-window . t))))))))
+
 (provide 'auto-side-windows-test)
 ;;; auto-side-windows-test.el ends here
