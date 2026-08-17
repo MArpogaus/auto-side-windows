@@ -124,7 +124,7 @@ keybindings:
 
 #+begin_src emacs-lisp
   (use-package auto-side-windows
-    :load-path "/path/to/auto-side-windows/"
+    :ensure t
     :custom
     ;; Respects display actions when switching buffers
     (switch-to-buffer-obey-display-actions t)
