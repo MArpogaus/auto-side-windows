@@ -4,7 +4,7 @@
 
 ;; Author: Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 ;; Assisted-by: Claude:claude-opus-5
-;; Version: 0.3.2
+;; Version: 0.3.3
 ;; Package-Requires: ((emacs "30.1"))
 ;; Keywords: convenience, windows, buffers
 ;; URL: https://github.com/MArpogaus/auto-side-windows
