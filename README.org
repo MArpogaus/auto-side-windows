@@ -11,9 +11,7 @@
 
 * auto-side-windows :TOC_3_gh:noexport:
   - [[#about-the-project][About The Project]]
-    - [[#motivation][Motivation]]
-    - [[#layout-concept][Layout Concept]]
-    - [[#inspirations][Inspirations]]
+    - [[#layout][Layout]]
   - [[#getting-started][Getting Started]]
     - [[#prerequisites][Prerequisites]]
     - [[#installation][Installation]]
@@ -30,7 +28,10 @@
     - [[#popper][Popper]]
     - [[#core-emacs-display-buffer-alist][Core Emacs (=display-buffer-alist=)]]
   - [[#bonus-boxes-around-side-windows][Bonus: Boxes around side windows]]
+  - [[#known-limits][Known Limits]]
+  - [[#how-it-works][How It Works]]
   - [[#contributions][Contributions]]
+  - [[#acknowledgments][Acknowledgments]]
   - [[#license][License]]
   - [[#contact][Contact]]
 
@@ -38,22 +39,21 @@
 
 [[file:img/demo.gif]]
 
-Help opens on the right, occur on top, the shell at the bottom, and
-the editing area in the middle stays put.  One command detaches a
-side window into a normal one and puts it back.
+You write rules for buffer names and for major modes.  A buffer that
+matches a rule opens in the side window that the rule names: top,
+bottom, left or right.  The editing area in the middle stays where it
+is.
 
-*** Motivation
+=display-buffer-alist= does this work in Emacs, and it is hard to
+write by hand.  This package writes the entry for you, from options
+that name a side.
 
-I found the default behavior of =display-buffer= often unpredictable, leading to new buffers appearing in unexpected windows.
-Digging into Emacs' window management led me to realize the power of =display-buffer-alist=, but configuring it directly can be complicated and confusing especially for new users.
+One command moves a side window into an ordinary window, and back.
 
-=auto-side-windows= simplifies this process.
-It provides a straightforward way to define rules based on buffer names or major modes, ensuring that specific buffers consistently open in designated side windows (top, bottom, left, or right).
-The goal is to achieve a predictable, organized workspace, similar to layouts often found in IDEs, keeping the main editing area clear while providing easy access to complementary information.
+*** Layout
 
-*** Layout Concept
-
-The package helps achieve layouts where side windows display non-primary information, keeping the central area focused on editing. A conceptual layout might look like this:
+The side windows hold what you look at.  The middle of the frame
+holds what you edit.  A layout looks like this:
 
 #+begin_src
      _________________________________________________
@@ -73,15 +73,8 @@ The package helps achieve layouts where side windows display non-primary informa
     |_________________________________________________|
 #+end_src
 
-This allows buffers like help, compilation logs, shells, or project trees to be accessible without disrupting the primary editing flow.
-
-*** Inspirations
-
-This package builds upon the excellent work and explanations of others in the Emacs community:
-- [[https://karthinks.com/software/emacs-window-management-almanac/][Emacs Window Management Almanac]] by [[https://www.reddit.com/user/karthinks/][u/karthinks]]
-- [[https://www.masteringemacs.org/article/demystifying-emacs-window-manager][Demystifying Emacs's Window Manager]] by [[https://www.reddit.com/user/mickeyp/][u/mickeyp]]
-- [[https://github.com/karthink/.emacs.d/blob/25a0aec771c38e340789d7c304f3e39ff23aee3e/lisp/setup-windows.el#L164][Karthink's setup-windows.el]] for a practical examples.
-Thank you all!
+A help buffer, a compilation log, a shell or a project tree is then
+in reach, and your text stays where it is.
 
 ** Getting Started
 
@@ -101,7 +94,7 @@ manager, and configure it as shown below:
 
 *** Example Configuration
 
-A minimal, working setup — the demo above runs on exactly this:
+A small and complete setup.  The picture above shows it:
 
 #+begin_src emacs-lisp
   (use-package auto-side-windows
@@ -201,7 +194,7 @@ keybindings:
           ("C-c w l" . auto-side-windows-display-buffer-left)
           ("C-c w r" . auto-side-windows-display-buffer-right)
           ("C-c w w" . auto-side-windows-switch-to-buffer)
-          ("C-c w t" . window-toggle-side-windows) ; Toggle all side windows
+          ("C-c w a" . window-toggle-side-windows) ; Toggle all side windows
           ("C-c w T" . auto-side-windows-toggle-side-window)) ; Toggle current buffer in/out of side window
     :hook
     (after-init . auto-side-windows-mode))
@@ -209,42 +202,51 @@ keybindings:
 
 ** Usage
 
-Once =auto-side-windows-mode= is enabled and configured, buffers matching your defined rules (by name regexp or major mode) will automatically be displayed in the specified side window.
+Turn =auto-side-windows-mode= on and write your rules.  A buffer that
+matches a rule then opens in the side window of that rule.  A rule
+matches the name of the buffer or its major mode.
 
 ** Customization
 
-You can customize the behavior through the following variables (accessible via `M-x customize-group RET auto-side-windows RET`):
+These options set the rules and the look of the side windows.  =M-x
+customize-group RET auto-side-windows RET= shows them all:
 
 | Option                                                      | Type          | Description                                                                            |
 |-------------------------------------------------------------+---------------+----------------------------------------------------------------------------------------|
-| =auto-side-windows-{top,bottom,left,right}-buffer-names=      | list (string) | Regexps matching buffer names for each side.                                           |
-| =auto-side-windows-{top,bottom,left,right}-buffer-modes=      | list (symbol) | Major modes for buffers for each side.                                                 |
-| =auto-side-windows-{top,bottom,left,right}-extra-conditions=  | list (sexp)   | Additional conditions (e.g., `(category . ...)` for =display-buffer=) for matching.      |
-| =auto-side-windows-{top,bottom,left,right}-window-parameters= | alist         | Window parameters (see =window-parameters=) applied to windows on this side.             |
-| =auto-side-windows-{top,bottom,left,right}-alist=             | alist         | Action alist properties (e.g., =window-height=) applied for this side.                   |
-| =auto-side-windows-common-window-parameters=                  | alist         | Window parameters applied to *all* side windows created by this package.                 |
-| =auto-side-windows-common-alist=                              | alist         | Action alist properties (e.g., `(dedicated . t)`) applied for *all* side windows.        |
-| =auto-side-windows-reuse-mode-window=                         | alist         | Specify sides (e.g., `((right . t))`) where windows can be reused for same major mode. |
-| =auto-side-windows-{before,after}-display-hook=               | hook          | Hooks run before/after displaying a buffer in a side window.                           |
-| =auto-side-windows-{before,after}-toggle-hook=                | hook          | Hooks run before/after toggling a buffer as a side window.                             |
+| =auto-side-windows-{top,bottom,left,right}-buffer-names=      | list (string) | the buffer names of that side, as regular expressions |
+| =auto-side-windows-{top,bottom,left,right}-buffer-modes=      | list (symbol) | the major modes of that side                          |
+| =auto-side-windows-{top,bottom,left,right}-extra-conditions=  | list (sexp)   | more conditions of that side, as =buffer-match-p= takes them |
+| =auto-side-windows-{top,bottom,left,right}-window-parameters= | alist         | the window parameters of that side                    |
+| =auto-side-windows-{top,bottom,left,right}-alist=             | alist         | the action alist of that side, for example =window-height= |
+| =auto-side-windows-common-window-parameters=                  | alist         | the window parameters of each side window             |
+| =auto-side-windows-common-alist=                              | alist         | the action alist of each side window                  |
+| =auto-side-windows-reuse-mode-window=                         | alist         | the sides that reuse a window with the same major mode |
+| =auto-side-windows-{before,after}-display-hook=               | hook          | runs before and after a buffer goes to a side window  |
+| =auto-side-windows-{before,after}-toggle-hook=                | hook          | runs before and after the toggle of a side window     |
 
 ** Commands
 
-The package provides the following commands:
+| Command                                             | Action                                              |
+|-----------------------------------------------------+-----------------------------------------------------|
+| =auto-side-windows-mode=                              | turn the rules on or off                            |
+| =auto-side-windows-toggle-side-window=                | move the buffer out of its side window, and back    |
+| =auto-side-windows-display-buffer-{top,bottom,left,right}= | show the buffer on that side, whatever the rules say |
+| =auto-side-windows-display-buffer-on-side=            | the same, and ask for the side in the minibuffer    |
+| =auto-side-windows-switch-to-buffer=                  | switch to a buffer that is in a side window         |
 
-- =auto-side-windows-mode=: Global minor mode. Enable this to activate the automatic side window management based on your rules.
-- =auto-side-windows-toggle-side-window=: If the current buffer is in a side window created by this package, move it to a normal window. If it was just moved out, move it back to its side window configuration. Useful for temporarily maximizing a side window buffer.
-- =auto-side-windows-display-buffer-{top,bottom,left,right}=: Manually force the current buffer to be displayed in a side window on the specified side, overriding normal rules.
-- =auto-side-windows-display-buffer-on-side=: Manually force the current buffer to be displayed in a side window on the specified side, overriding normal rules. Compared to the commands above, it asks for the side in the minibuffer.
-- =auto-side-windows-switch-to-buffer=: Switch to a side buffer. The option =switch-to-buffer-obey-display-actions= should be customized to a non-nil value to respect the display buffer actions defined by this package.
+=auto-side-windows-switch-to-buffer= needs
+=switch-to-buffer-obey-display-actions= at a value other than nil.
+The rules of this package are display actions.
 
 ** Integration with Other Packages
 
-=auto-side-windows= plays well with other common window and buffer management packages.
+The package works together with other packages for windows and
+buffers.
 
 *** Popper Integration
 
-You can configure [[https://github.com/karthink/popper][Popper]] to manage the side windows created by =auto-side-windows=. Define Popper's reference buffers using the same lists you use for =auto-side-windows=:
+[[https://github.com/karthink/popper][Popper]] can manage the side windows of this package.  Give Popper the
+same lists that you gave =auto-side-windows=:
 
 #+begin_src emacs-lisp
   (use-package popper
@@ -269,9 +271,10 @@ You can configure [[https://github.com/karthink/popper][Popper]] to manage the s
           ("C-p" . popper-cycle)))   ; Cycle through visible popups
 #+end_src
 
-With this setup, you can use Popper commands (like =popper-toggle= or =popper-cycle=) to quickly hide/show/cycle through the side windows managed by =auto-side-windows=.
+You can then hide, show and cycle the side windows with the commands
+of Popper, for example =popper-toggle= and =popper-cycle=.
 
-Additionally, the following custom command allows you to switch to arbitrary buried popup buffers:
+The command below switches to a popup buffer that is buried:
 
 #+begin_src emacs-lisp
   (defun my/popper-switch-to-buried-buffer (buffer)
@@ -291,13 +294,15 @@ Additionally, the following custom command allows you to switch to arbitrary bur
       (message "No buried popups.")))
     #+end_src
 
-Just add it to the =:preface= section of the above =use-package= declaration and optionally bind it to a key.
+Put it into the =:preface= part of the =use-package= form above, and
+bind it to a key.
 
 *** Ace Window Integration
 
-[[https://github.com/abo-abo/ace-window][Ace Window]] can serve as a fallback mechanism for selecting a window when =display-buffer= doesn't find a suitable existing window or rule (including those from =auto-side-windows=).
+[[https://github.com/abo-abo/ace-window][Ace Window]] can ask you for a window when =display-buffer= finds no
+rule and no window to reuse.
 
-Modify =display-buffer-base-action= to include =ace-display-buffer=. This tells Emacs to use Ace Window to ask you where to put a buffer if other methods fail.
+Add =ace-display-buffer= to =display-buffer-base-action=:
 
 #+begin_src emacs-lisp
   (use-package ace-window
@@ -307,63 +312,69 @@ Modify =display-buffer-base-action= to include =ace-display-buffer=. This tells 
                                   ace-display-buffer))) ; Ask user via ace-window
 #+end_src
 
-Now, if a command tries to display a buffer and no =auto-side-windows= rule applies and standard reuse fails, =ace-display-buffer= will trigger, letting you pick the window.
+A buffer that matches no rule, and that Emacs cannot put into a
+window it knows, now goes to the window that you pick.
 
 *** Enhancing =magit= and =org-mode= compatibility
 
-To further enhance the Emacs experience with =auto-side-windows=, consider adding these configurations:
+These settings send the buffers of magit and org-mode to a side:
 
 #+begin_src emacs-lisp
   ;; Org mode: Ensure agenda buffers open in the top side window for easy access
   (setopt org-src-window-setup 'plain)
   (setopt auto-side-windows-top-buffer-names '("^\\*Org Agenda\\*$"
                                                "^\\*Org Src.*\\*"
-                                               "^\\*Org-Babel Error Output\\*"
-                                               ...)))
+                                               "^\\*Org-Babel Error Output\\*"))
 
   ;; Magit: Display Magit diff/status in the right side window, edit commit msg on top
   (setopt magit-display-buffer-function #'display-buffer
           magit-commit-diff-inhibit-same-window t)
   (setopt auto-side-windows-right-buffer-names '("^magit-diff:.*$"
-                                                 "^magit-process:.*$"
-                                                 ...))
+                                                 "^magit-process:.*$"))
   (setopt auto-side-windows-right-buffer-modes '(magit-status-mode
                                                  magit-log-mode
                                                  magit-diff-mode
-                                                 magit-process-mode
-                                                 ...))
+                                                 magit-process-mode))
   (setopt auto-side-windows-top-buffer-names
-          '("^COMMIT_EDITMSG$"
-            ...))
+          '("^COMMIT_EDITMSG$"))
 #+end_src
 
-These configurations integrate well with =auto-side-windows= and enhance buffer management for specific use cases in Emacs.
+The commit message goes to the top, and the other magit buffers go to
+the right.
 
 ** Comparison with Other Packages
 
-While several packages address window management, =auto-side-windows= has a specific focus:
-
 *** Shackle
-[[https://depp.brause.cc/shackle/][Shackle]] is a powerful package for finely controlling how and where popup windows appear, including options for creating new frames or specifying precise window parameters. It's very flexible and can involve more complex rule definitions.
 
-*Difference:* =auto-side-windows= focuses *specifically* on simplifying the common use case of assigning buffers to *side windows* within the *current frame* based on simple name/mode matching, acting as a high-level interface to =display-buffer-alist= for this purpose.
+[[https://depp.brause.cc/shackle/][Shackle]] controls where a popup window appears.  It can also make a
+new frame, and it takes detailed window parameters.  Its rules are
+more powerful and longer.
+
+=auto-side-windows= does one thing: it sends a buffer to a side
+window of the current frame, by name or by major mode.
 
 *** Popper
-[[https://github.com/karthink/popper][Popper]] excels at *managing* buffers that are already considered "popups". It allows you to quickly toggle, cycle through, and manage the visibility of these popup windows.
 
-*Difference:* =auto-side-windows= *defines which buffers should become side windows* in the first place. Popper can then be used to *manage* these side windows created by =auto-side-windows= rules (see [[#popper-integration][Popper Integration]]), by cycling through them or separating them by project. They work well together. 
+[[https://github.com/karthink/popper][Popper]] manages the buffers that are popups already.  It shows, hides
+and cycles them.
+
+=auto-side-windows= says which buffers become side windows.  Popper
+can then manage these windows, see [[#popper-integration][Popper Integration]].  The two
+packages work well together.
 
 *** Core Emacs (=display-buffer-alist=)
-Emacs' built-in =display-buffer-alist= is the underlying mechanism for controlling buffer display. It's extremely powerful but requires writing potentially complex alist structures.
 
-*Difference:* =auto-side-windows= acts as a configuration layer *on top of* =display-buffer-alist=. It generates the necessary alist entries for side window rules based on user-friendly customization variables, reducing the need to write the raw alist entries manually for this common pattern.
+=display-buffer-alist= is the mechanism under all of this.  It is
+powerful, and its entries are hard to write.
+
+=auto-side-windows= writes one entry and answers it from options that
+name a side.
 
 ** Bonus: Boxes around side windows
 
-The face remapping recipe that used to live here grew into a package
-of its own: [[https://github.com/MArpogaus/window-box][window-box]] draws a rectangular box around a window and
-leaves the mode line and the header line alone.  Boxing everything
-that lands in a side window is one hook:
+The recipe that used to live here is a package now.  [[https://github.com/MArpogaus/window-box][window-box]] draws
+a box around a window and keeps what your mode line and your header
+line show.  One hook boxes each buffer that goes to a side window:
 
 #+begin_src emacs-lisp
   (add-hook 'auto-side-windows-after-display-hook
@@ -371,10 +382,35 @@ that lands in a side window is one hook:
               (with-current-buffer buffer (window-box-mode 1))))
 #+end_src
 
+** Known Limits
+
+- The package answers for each buffer that Emacs displays, because
+  its entry in =display-buffer-alist= has the condition =t=.  A buffer
+  that matches no rule costs about 43 microseconds.
+- A side of a frame holds as many windows as =window-sides-slots=
+  allows.  A new buffer replaces the buffer of the last slot when
+  each slot is in use.
+- A rule holds for the whole frame.  The package has no rules for one
+  frame or for one project.
+
+** How It Works
+
+[[file:docs/implementation.org][docs/implementation.org]] describes the implementation: the entry in
+=display-buffer-alist=, the order of the questions that find the side,
+the slot, and the toggle.
+
 ** Contributions
 
-Contributions to the =auto-side-windows= package are greatly appreciated!
-Feel free to check the [[https://github.com/MArpogaus/auto-side-windows/issues][issues page]] or submit a [[https://github.com/MArpogaus/auto-side-windows/pulls][pull request]].
+Contributions are greatly appreciated!  Feel free to check the
+[[https://github.com/MArpogaus/auto-side-windows/issues][issues page]] or submit a [[https://github.com/MArpogaus/auto-side-windows/pulls][pull request]].
+
+** Acknowledgments
+
+This package builds on the work and the writing of others:
+
+- [[https://karthinks.com/software/emacs-window-management-almanac/][Emacs Window Management Almanac]] by [[https://www.reddit.com/user/karthinks/][u/karthinks]]
+- [[https://www.masteringemacs.org/article/demystifying-emacs-window-manager][Demystifying Emacs's Window Manager]] by [[https://www.reddit.com/user/mickeyp/][u/mickeyp]]
+- [[https://github.com/karthink/.emacs.d/blob/25a0aec771c38e340789d7c304f3e39ff23aee3e/lisp/setup-windows.el#L164][setup-windows.el]] by karthink, for the examples
 
 ** License
 
@@ -382,7 +418,7 @@ Distributed under the [[file:COPYING][GPLv3]] License.
 
 ** Contact
 
-[[https://github.com/MArpogaus/][Marcel Arpogaus]] - [[mailto:znepry.necbtnhf@tznvy.pbz][znepry.necbtnhf@tznvy.pbz]] (encrypted with [ROT13](https://rot13.com/))
+[[https://github.com/MArpogaus/][Marcel Arpogaus]] - [[mailto:znepry.necbtnhf@tznvy.pbz][znepry.necbtnhf@tznvy.pbz]] (encrypted with [[https://rot13.com/][ROT13]])
 
 Project Link:
 [[https://github.com/MArpogaus/auto-side-windows]]

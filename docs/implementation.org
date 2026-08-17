@@ -1,0 +1,122 @@
+#+TITLE: How auto-side-windows works
+#+OPTIONS: toc:2
+
+This document describes the implementation.  The [[file:../README.org][README]] tells you how
+to use the package.
+
+* The entry in display-buffer-alist
+
+=auto-side-windows-mode= adds one entry to =display-buffer-alist=:
+
+#+begin_src emacs-lisp
+  (add-to-list 'display-buffer-alist
+               '(t auto-side-windows--display-buffer))
+#+end_src
+
+The mode removes the entry when it goes off.  One entry is enough,
+because the package asks its own rules for each buffer.
+
+The condition of the entry is =t=, so =display-buffer= offers each
+buffer to =auto-side-windows--display-buffer=.  The function answers
+with a window, or with nil.  A nil answer sends the buffer the way
+that Emacs would take it without the package.
+
+* How the package finds the side
+
+=auto-side-windows--get-buffer-side= asks these questions, in this
+order:
+
+1. Is the buffer detached?  =auto-side-windows-toggle-side-window=
+   sets =auto-side-windows--detached= in the buffer.  The buffer then
+   goes to an ordinary window.
+2. Does the action alist name a side?  The commands
+   =auto-side-windows-display-buffer-top= and its three siblings put
+   the side there.
+3. Does the buffer know its side?  =auto-side-windows-side= holds it.
+   The buffer keeps the side that it went to before, and a file can
+   set the variable as a file-local variable.
+4. Do the rules of a side match?  The package tries top, bottom, left
+   and right, in this order.
+
+The rules of a side are the buffer names, the major modes and the
+extra conditions of that side.
+=auto-side-windows--buffer-match-condition= puts them into one
+condition for =buffer-match-p=.  Each condition that
+=buffer-match-p= takes also works in the extra conditions: a regular
+expression, a cons cell such as =(category . comint)=, or a function.
+
+* The slot
+
+A side of a frame holds a number of windows.  =window-sides-slots=
+gives the number for each side, and a window has a slot number in its
+side.
+
+=auto-side-windows--get-next-free-slot= walks the slots of the side
+from zero.  It returns the first free slot.  It returns the slot of a
+window that it can reuse:
+
+- the window that already shows the buffer
+- a window with a buffer of the same major mode, if
+  =auto-side-windows-reuse-mode-window= names the side
+
+The function returns the highest allowed slot if each slot is in use.
+The new buffer then replaces the buffer in that window.
+
+* The display
+
+=auto-side-windows--display-buffer= puts three things together:
+
+- the window parameters: the common ones and the ones of the side
+- the action alist: the common one and the one of the side
+- the side and the slot
+
+=auto-side-windows--side-options= names the options of each side.
+The names are written out.  The compiler therefore reads them, and a
+search finds them.
+
+The function then calls =display-buffer-in-side-window=, or it reuses
+the window that shows the buffer already.  A reused window can be an
+ordinary window.  The buffer then went to no side, and it must not
+claim one:
+
+- the buffer does not get a side in =auto-side-windows-side=
+- =auto-side-windows-after-display-hook= does not run
+
+The hook is there to dress a side window, and an ordinary window is
+not one.
+
+* The toggle
+
+=auto-side-windows-toggle-side-window= moves the buffer of a side
+window into an ordinary window, and back.
+
+The command sets =auto-side-windows--detached= in the buffer, deletes
+the side window and displays the buffer again.  The buffer then goes
+to an ordinary window.  The command removes the mark on the second
+call, and the buffer goes back to its side.
+
+The side windows of a frame have their own parameters, and a display
+sets them again each time.  The package therefore writes only the
+parameters of a window that has =window-side=.
+
+* Known cost
+
+=auto-side-windows--display-buffer= runs for each buffer that Emacs
+displays, because the condition of its entry is =t=.  A buffer that
+matches no rule costs about 43 microseconds.  This is the price of one
+entry that asks its own questions.
+
+* The tests
+
+=make test= runs the batch suite in
+=test/auto-side-windows-test.el=.  It tests:
+
+- the side of a buffer, for each of the four questions above
+- the condition that the rules of a side make
+- the free slot, with and without a window to reuse
+- the options of each side
+- the toggle, in both directions
+- the entry in =display-buffer-alist=, after the mode goes on and off
+
+A batch session has a frame and windows, so the side windows and
+their parameters are testable without a display.
