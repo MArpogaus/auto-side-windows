@@ -257,19 +257,35 @@ side and with the display hooks run for it.  A slot keeps the size you
 gave it: a side window you made taller stays the taller one, whichever
 buffer moves into it.
 
-=auto-side-windows-drag-slot= does the same with the mouse.  It is the
-one key this package binds, on the header line of a side window:
+=auto-side-windows-drag-slot= does the same with the mouse: press on the
+header line of a side window, drag to another side window of the same
+side, let go, and the two buffers change places.  A drag that ends
+anywhere else does nothing, because a slot belongs to one side.
+
+The package binds no key, this one included.  Bind it on the header
+line of your side windows, on the *press* rather than the drag:
 
 #+begin_src emacs-lisp
-  ;; what auto-side-windows-mode-map holds
-  "<header-line> <drag-mouse-1>"
+  (defvar my-side-window-drag-map
+    (let ((map (make-sparse-keymap)))
+      (define-key map [down-mouse-1] #'auto-side-windows-drag-slot)
+      map))
+
+  ;; somewhere in the header line of a side window
+  (propertize " " 'keymap my-side-window-drag-map
+              'help-echo "Drag to another slot")
 #+end_src
 
-Press mouse-1 on the header line of a side window, drag to another side
-window of the same side and let go, and the two buffers change places.
-A drag that ends anywhere else does nothing, because a slot belongs to
-one side.  A side window needs a header line for this; the window
-parameters of a side decide that.
+Emacs binds a press on a header line to =mouse-drag-header-line=, which
+resizes the window, and it never lets a =drag-mouse-1= out.  A binding
+on the drag therefore answers in one place only, the top side window,
+where there is nothing above to resize.  A binding on the press is the
+one that works, and a keymap on the header line takes it before Emacs
+does.  The command follows the mouse itself from there.
+
+Give the binding a part of the header line that has no other use, a
+stretch of space between the name and the buttons for example: the
+buttons keep their own keymaps.
 The rules of this package are display actions.
 
 ** Integration with Other Packages

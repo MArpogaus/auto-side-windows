@@ -313,15 +313,17 @@ windows of the same side."
       (kill-buffer a)
       (kill-buffer b))))
 
-(ert-deftest auto-side-windows-test-mode-binds-the-drag-only ()
-  "The mode brings one binding, and it is the drag of a header line."
-  (should (eq (keymap-lookup auto-side-windows-mode-map
-                             "<header-line> <drag-mouse-1>")
-              #'auto-side-windows-drag-slot))
-  (let (bindings)
-    (map-keymap (lambda (key _def) (push key bindings))
-                auto-side-windows-mode-map)
-    (should (= (length bindings) 1))))
+(ert-deftest auto-side-windows-test-the-package-binds-no-key ()
+  "The package brings commands and no keys of its own.
+The header line of a side window is where a drag belongs, and that
+header line is the reader's to write."
+  (should-not (boundp 'auto-side-windows-mode-map))
+  (should-not (keymap-lookup (current-global-map)
+                             "<header-line> <drag-mouse-1>"))
+  ;; the press on a header line stays with Emacs, which resizes the
+  ;; window with it
+  (should (eq (keymap-lookup (current-global-map) "<header-line> <down-mouse-1>")
+              #'mouse-drag-header-line)))
 
 (ert-deftest auto-side-windows-test-a-slot-keeps-its-size ()
   "The size a reader gave a slot stays with the slot, not with the buffer.

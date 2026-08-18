@@ -602,19 +602,42 @@ non-nil value to respect the display buffer actions defined by this package."
   (if buffer (switch-to-buffer buffer)
     (message "No side buffers.")))
 
+(defun auto-side-windows--drag-release (event)
+  "Return the event that ends the drag begun by EVENT.
+A press has to be followed here.  Emacs binds a press on a header line
+to `mouse-drag-header-line\=', which resizes the window and never lets a
+`drag-mouse-1\=' out, so a binding on the press is the only one that
+reaches this package, and the press says nothing about where the mouse
+goes.  An event that is a drag already carries both ends."
+  (if (eq (car-safe event) 'down-mouse-1)
+      (track-mouse
+        (let (next)
+          (while (and (setq next (read-event))
+                      (mouse-movement-p next)))
+          next))
+    event))
+
 ;;;###autoload
 (defun auto-side-windows-drag-slot (event)
-  "Move a buffer to the slot its header line was dragged to.
-EVENT is the drag: it starts on the header line of a side window and
-ends in another window.  Both have to be side windows of the same side,
-because a slot belongs to a side; a drag that ends anywhere else does
-nothing.
+  "Move a buffer to the slot its header line is dragged to.
+EVENT is a press on the header line of a side window, or the drag that
+such a press produces.  The window the mouse is let go over and the one
+it started in have to be side windows of the same side, because a slot
+belongs to a side; a drag that ends anywhere else does nothing.
 
 The two buffers change place, as `auto-side-windows-move-to-next-slot\='
-moves them."
+moves them.
+
+The package binds no key.  Put this on the header line of your side
+windows, where a press is yours to give away:
+
+    (keymap-set my-header-line-map \"<down-mouse-1>\"
+                #\='auto-side-windows-drag-slot)"
   (interactive "e")
-  (let* ((from (posn-window (event-start event)))
-         (to (posn-window (event-end event))))
+  (when-let* ((from (posn-window (event-start event)))
+              (release (auto-side-windows--drag-release event))
+              ((consp release))
+              (to (posn-window (event-end release))))
     (when (and (windowp from)
                (windowp to)
                (not (eq from to))
@@ -622,12 +645,6 @@ moves them."
                (eq (window-parameter from 'window-side)
                    (window-parameter to 'window-side)))
       (auto-side-windows--swap-slots from to))))
-
-(defvar-keymap auto-side-windows-mode-map
-  :doc "Keymap of `auto-side-windows-mode'.
-It holds the drag of a header line and nothing else: every command of
-this package is for you to bind."
-  "<header-line> <drag-mouse-1>" #'auto-side-windows-drag-slot)
 
 ;;;; Minor Mode
 ;;;###autoload
@@ -638,7 +655,6 @@ in defined side windows based on their names or modes.  It adds
 provided functions to `display-buffer-alist' to enable this feature."
   :global t
   :group 'auto-side-windows
-  :keymap auto-side-windows-mode-map
   (if auto-side-windows-mode
       (add-to-list 'display-buffer-alist
                    '(t auto-side-windows--display-buffer))
