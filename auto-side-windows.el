@@ -183,8 +183,7 @@ belongs to `auto-side-windows-bottom-height\=', and a size here is dropped."
   :type 'alist
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-top-height
-  (lambda (window) (fit-window-to-buffer window 20 5))
+(defcustom auto-side-windows-top-height nil
   "How tall a top side window is when it is made.
 A number of lines, or a function of one window, as the `window-height\='
 entry of a display action alist takes them; nil leaves the height to
@@ -210,14 +209,14 @@ A number of columns, or a function of one window; see
   :type '(choice (const :tag "Emacs decides" nil) natnum function)
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-right-width 80
+(defcustom auto-side-windows-right-width nil
   "How wide a right side window is when it is made.
 A number of columns, or a function of one window; see
 `auto-side-windows-top-height\='."
   :type '(choice (const :tag "Emacs decides" nil) natnum function)
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-remember-sizes t
+(defcustom auto-side-windows-remember-sizes nil
   "Whether a side and its slots keep the size you give them.
 A side window that you resize is measured, and a buffer displayed in
 that side or slot later gets the size back, so it survives a toggle, a
@@ -227,8 +226,8 @@ The sizes belong to the tab they were measured in, and to the frame
 where there are no tabs.  A tab that has none starts from the size
 options of the sides.  Nothing is remembered across sessions.
 
-Nil forgets them: every side window is then made with the size its side
-names."
+Nil, the default, forgets them: every side window is then made with the
+size its side names."
   :type 'boolean
   :group 'auto-side-windows)
 
@@ -249,12 +248,12 @@ here is dropped, so that one option answers for the size."
   :type 'alist
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-common-window-parameters '((no-other-window . t)
-                                                        (tab-line-format . none)
-                                                        (mode-line-format . none))
+(defcustom auto-side-windows-common-window-parameters nil
   "Custom window parameters for all side windows.
 These parameters will be applied to all side windows created by
-`auto-side-windows-mode'."
+`auto-side-windows-mode'.  A side window is an ordinary window until you
+say otherwise here; `no-other-window', `tab-line-format' and
+`mode-line-format' are the ones a panel usually wants."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -265,9 +264,10 @@ These parameters will be applied to all side windows created by
   :type 'alist
   :group 'auto-side-windows)
 
-(defcustom auto-side-windows-reuse-mode-window '((right . t))
+(defcustom auto-side-windows-reuse-mode-window nil
   "Allow reuse of side windows for same mode on given sides.
-If set, side windows may be reused for buffers of the same major mode."
+If set, side windows may be reused for buffers of the same major mode.
+An entry names a side, as in \='((right . t))."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -428,20 +428,22 @@ action alist."
 ;; from the size of its side, and a closed tab takes its sizes with it.
 
 (defun auto-side-windows--geometry ()
-  "Return the geometry of this tab, or of this frame where there are none.
+  "Return the geometry of the current tab.
 The value is an alist of (SIDE SIZE COUNT SLOTS), where SIZE is the
 width of a left or a right side and the height of a top or a bottom one,
 COUNT is how many windows the side had when it was measured, and SLOTS
-is an alist of slot number to the size across the side."
-  (if-let* ((tab (assq 'current-tab (funcall tab-bar-tabs-function))))
-      (alist-get 'auto-side-windows-geometry (cdr tab))
-    (frame-parameter nil 'auto-side-windows-geometry)))
+is an alist of slot number to the size across the side.
+
+There is a current tab whether or not `tab-bar-mode\=' is on, because
+`tab-bar-tabs\=' makes one; a frame without tabs therefore keeps its
+sizes in the tab it does not show."
+  (alist-get 'auto-side-windows-geometry
+             (cdr (assq 'current-tab (funcall tab-bar-tabs-function)))))
 
 (defun auto-side-windows--set-geometry (value)
-  "Write VALUE as the geometry of this tab, or of this frame."
-  (if-let* ((tab (assq 'current-tab (funcall tab-bar-tabs-function))))
-      (setf (alist-get 'auto-side-windows-geometry (cdr tab)) value)
-    (set-frame-parameter nil 'auto-side-windows-geometry value)))
+  "Write VALUE as the geometry of the current tab."
+  (when-let* ((tab (assq 'current-tab (funcall tab-bar-tabs-function))))
+    (setf (alist-get 'auto-side-windows-geometry (cdr tab)) value)))
 
 (defun auto-side-windows--across-p (side)
   "Return non-nil when the size of SIDE is a width.

@@ -216,8 +216,10 @@ side; without the mode Emacs decides where a buffer goes, and
 
 ** Customization
 
-These options set the rules and the look of the side windows.  =M-x
-customize-group RET auto-side-windows RET= shows them all:
+Every option starts empty, so the package changes nothing until you
+tell it to: no rules, no window parameters, no sizes, and no sizes
+remembered.  =M-x customize-group RET auto-side-windows RET= shows them
+all:
 
 | Option                                                      | Type          | Description                                                                            |
 |-------------------------------------------------------------+---------------+----------------------------------------------------------------------------------------|
@@ -268,17 +270,20 @@ One option answers for the size, so a =window-width= or a
 =window-height= in the action alist of a side is dropped.  The rest of
 the alist applies as before.
 
-With =auto-side-windows-remember-sizes= at its default of t, a side
-window you resize keeps its size: the side and each of its slots are
-measured, and a buffer displayed there later gets the size back.  A
-toggle, a killed buffer and a move from slot to slot therefore leave the
-layout as you set it.
+Set =auto-side-windows-remember-sizes= and a side window you resize
+keeps its size: the side and each of its slots are measured, and a buffer
+displayed there later gets the size back.  A toggle, a killed buffer and
+a move from slot to slot therefore leave the layout as you set it.
+
+#+begin_src emacs-lisp
+  (setq auto-side-windows-remember-sizes t)
+#+end_src
 
 The sizes belong to the tab they were measured in, so each tab keeps its
-own; without tabs they belong to the frame.  A new tab starts from the
-options above, a tab you close forgets its sizes, and nothing is kept
-across sessions.  Nil forgets them altogether, and every side window is
-made with the size its option names.
+own.  This works whether or not =tab-bar-mode= is on, because Emacs
+keeps a current tab either way.  A new tab starts from the options
+above, a tab you close forgets its sizes, and nothing is kept across
+sessions.
 
 ** Moving a buffer between slots
 
