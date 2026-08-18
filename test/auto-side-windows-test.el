@@ -175,144 +175,114 @@ the table is a test failure and not a nil at display time."
         (should (equal (auto-side-windows--side-option side 'parameters)
                        '((no-other-window . t))))))))
 
+(defmacro auto-side-windows-test--with-sides (&rest body)
+  "Run BODY with the mode on and two buffers, `a\=' and `b\='.
+The side windows and the two buffers go afterwards, and the mode off.
+A side window may not be the only window of a frame, so the sides are
+deleted one by one rather than with `delete-other-windows\='."
+  (declare (indent 0))
+  `(let ((a (get-buffer-create "*slot a*"))
+         (b (get-buffer-create "*slot b*")))
+     (auto-side-windows-mode 1)
+     (unwind-protect
+         (progn ,@body)
+       (auto-side-windows-mode -1)
+       (dolist (window (window-list))
+         (when (window-parameter window 'window-side)
+           (delete-window window)))
+       (kill-buffer a)
+       (kill-buffer b))))
+
 (defun auto-side-windows-test--side-window (buffer side slot)
   "Show BUFFER in a side window on SIDE in SLOT, and return the window."
   (display-buffer-in-side-window buffer `((side . ,side) (slot . ,slot))))
 
-(defun auto-side-windows-test--clear-sides ()
-  "Delete the side windows of the frame.
-`delete-other-windows\=' cannot do it: a side window may not be the only
-window of a frame."
-  (dolist (window (window-list))
-    (when (window-parameter window 'window-side)
-      (delete-window window))))
+(defun auto-side-windows-test--drag (from to)
+  "Return the drag event of a header line from window FROM to window TO."
+  (list 'drag-mouse-1 (list from 'header-line) (list to 'header-line)))
+
+(defun auto-side-windows-test--in-slot (side slot)
+  "Return the buffer of the window in SLOT on SIDE."
+  (when-let* ((window (seq-find (lambda (win)
+                                  (equal (auto-side-windows--slot win) slot))
+                                (auto-side-windows--side-windows side))))
+    (window-buffer window)))
 
 (ert-deftest auto-side-windows-test-slot-neighbour-wraps ()
   "The slots that exist are the only ones, and the last leads to the first.
 A side with slots zero and three has two windows, so one step from
 either lands on the other."
-  (let ((a (get-buffer-create "*slot a*"))
-        (b (get-buffer-create "*slot b*")))
-    (unwind-protect
-        (let ((one (auto-side-windows-test--side-window a 'left 0))
-              (three (auto-side-windows-test--side-window b 'left 3)))
-          (should (equal (auto-side-windows--side-windows 'left) (list one three)))
-          (should (eq (auto-side-windows--slot-neighbour one 1) three))
-          (should (eq (auto-side-windows--slot-neighbour three 1) one))
-          (should (eq (auto-side-windows--slot-neighbour one -1) three))
-          ;; and a window that stands alone on its side has no neighbour
-          (delete-window three)
-          (should-not (auto-side-windows--slot-neighbour one 1)))
-      (auto-side-windows-test--clear-sides)
-      (kill-buffer a)
-      (kill-buffer b))))
-
-(defun auto-side-windows-test--in-slot (side slot)
-  "Return the buffer of the window in SLOT on SIDE."
-  (when-let* ((window (seq-find (lambda (win)
-                                  (equal (or (window-parameter win 'window-slot) 0)
-                                         slot))
-                                (auto-side-windows--side-windows side))))
-    (window-buffer window)))
-
+  (auto-side-windows-test--with-sides
+    (let ((one (auto-side-windows-test--side-window a 'left 0))
+          (three (auto-side-windows-test--side-window b 'left 3)))
+      (should (equal (auto-side-windows--side-windows 'left) (list one three)))
+      (should (eq (auto-side-windows--slot-neighbour one 1) three))
+      (should (eq (auto-side-windows--slot-neighbour three 1) one))
+      (should (eq (auto-side-windows--slot-neighbour one -1) three))
+      ;; and a window that stands alone on its side has no neighbour
+      (delete-window three)
+      (should-not (auto-side-windows--slot-neighbour one 1)))))
 (ert-deftest auto-side-windows-test-move-to-next-slot-swaps ()
   "Moving a buffer along the side brings the other buffer back the other way.
 Slot zero holds A and slot three holds B; after the move slot three
 holds A and slot zero holds B, and no slot was made or left empty.  The
 windows are new ones: the buffers are displayed again rather than set
 into the windows that were there."
-  (let ((a (get-buffer-create "*slot a*"))
-        (b (get-buffer-create "*slot b*")))
-    (auto-side-windows-mode 1)
-    (unwind-protect
-        (progn
-          (select-window (auto-side-windows-test--side-window a 'left 0))
-          (auto-side-windows-test--side-window b 'left 3)
-          (auto-side-windows-move-to-next-slot)
-          (should (eq (auto-side-windows-test--in-slot 'left 3) a))
-          (should (eq (auto-side-windows-test--in-slot 'left 0) b))
-          ;; two windows on that side, no more and no fewer
-          (should (= (length (auto-side-windows--side-windows 'left)) 2))
-          ;; point followed the buffer
-          (should (eq (window-buffer (selected-window)) a))
-          ;; and no window offers the buffer of the other to
-          ;; `switch-to-prev-buffer'
-          (dolist (window (auto-side-windows--side-windows 'left))
-            (should-not (window-prev-buffers window)))
-          ;; back again
-          (auto-side-windows-move-to-previous-slot)
-          (should (eq (auto-side-windows-test--in-slot 'left 0) a))
-          (should (eq (auto-side-windows-test--in-slot 'left 3) b))
-          (should (eq (window-buffer (selected-window)) a)))
-      (auto-side-windows-mode -1)
-      (auto-side-windows-test--clear-sides)
-      (kill-buffer a)
-      (kill-buffer b))))
-
+  (auto-side-windows-test--with-sides
+    (select-window (auto-side-windows-test--side-window a 'left 0))
+    (auto-side-windows-test--side-window b 'left 3)
+    (auto-side-windows-move-to-next-slot)
+    (should (eq (auto-side-windows-test--in-slot 'left 3) a))
+    (should (eq (auto-side-windows-test--in-slot 'left 0) b))
+    ;; two windows on that side, no more and no fewer
+    (should (= (length (auto-side-windows--side-windows 'left)) 2))
+    ;; point followed the buffer
+    (should (eq (window-buffer (selected-window)) a))
+    ;; and no window offers the buffer of the other to
+    ;; `switch-to-prev-buffer'
+    (dolist (window (auto-side-windows--side-windows 'left))
+      (should-not (window-prev-buffers window)))
+    ;; back again
+    (auto-side-windows-move-to-previous-slot)
+    (should (eq (auto-side-windows-test--in-slot 'left 0) a))
+    (should (eq (auto-side-windows-test--in-slot 'left 3) b))
+    (should (eq (window-buffer (selected-window)) a))))
 (ert-deftest auto-side-windows-test-move-needs-a-side-window ()
   "The command says so where there is no side window to move."
   (save-window-excursion
     (delete-other-windows)
     (should-error (auto-side-windows-move-to-next-slot) :type 'user-error))
   ;; and where the side has one slot only
-  (let ((a (get-buffer-create "*slot a*")))
-    (unwind-protect
-        (progn
-          (select-window (auto-side-windows-test--side-window a 'left 0))
-          (should-error (auto-side-windows-move-to-next-slot) :type 'user-error))
-      (auto-side-windows-test--clear-sides)
-      (kill-buffer a))))
-
-(defun auto-side-windows-test--drag (from to)
-  "Return the drag event of a header line from window FROM to window TO."
-  (list 'drag-mouse-1 (list from 'header-line) (list to 'header-line)))
-
+  (auto-side-windows-test--with-sides
+    (select-window (auto-side-windows-test--side-window a 'left 0))
+    (should-error (auto-side-windows-move-to-next-slot) :type 'user-error)))
 (ert-deftest auto-side-windows-test-drag-swaps-two-slots ()
   "A drag from the header line of one slot to another swaps the buffers."
-  (let ((a (get-buffer-create "*slot a*"))
-        (b (get-buffer-create "*slot b*")))
-    (auto-side-windows-mode 1)
-    (unwind-protect
-        (let ((one (auto-side-windows-test--side-window a 'left 0))
-              (three (auto-side-windows-test--side-window b 'left 3)))
-          (auto-side-windows-drag-slot
-           (auto-side-windows-test--drag one three))
-          (should (eq (auto-side-windows-test--in-slot 'left 3) a))
-          (should (eq (auto-side-windows-test--in-slot 'left 0) b)))
-      (auto-side-windows-mode -1)
-      (auto-side-windows-test--clear-sides)
-      (kill-buffer a)
-      (kill-buffer b))))
-
+  (auto-side-windows-test--with-sides
+    (let ((one (auto-side-windows-test--side-window a 'left 0))
+          (three (auto-side-windows-test--side-window b 'left 3)))
+      (auto-side-windows-drag-slot
+       (auto-side-windows-test--drag one three))
+      (should (eq (auto-side-windows-test--in-slot 'left 3) a))
+      (should (eq (auto-side-windows-test--in-slot 'left 0) b)))))
 (ert-deftest auto-side-windows-test-drag-stays-on-its-side ()
   "A drag that ends outside the side, or where it began, changes nothing.
 A slot belongs to a side, so the two ends of a drag have to be side
 windows of the same side."
-  (let ((a (get-buffer-create "*slot a*"))
-        (b (get-buffer-create "*slot b*")))
-    (auto-side-windows-mode 1)
-    (unwind-protect
-        (let ((left (auto-side-windows-test--side-window a 'left 0))
-              (bottom (auto-side-windows-test--side-window b 'bottom 0))
-              (plain (selected-window)))
-          ;; the two ends are on two sides
-          (auto-side-windows-drag-slot
-           (auto-side-windows-test--drag left bottom))
-          (should (eq (window-buffer left) a))
-          (should (eq (window-buffer bottom) b))
-          ;; the drag ends in an ordinary window
-          (auto-side-windows-drag-slot
-           (auto-side-windows-test--drag left plain))
-          (should (eq (window-buffer left) a))
-          ;; and a drag that ends where it began
-          (auto-side-windows-drag-slot
-           (auto-side-windows-test--drag left left))
-          (should (eq (window-buffer left) a)))
-      (auto-side-windows-mode -1)
-      (auto-side-windows-test--clear-sides)
-      (kill-buffer a)
-      (kill-buffer b))))
-
+  (auto-side-windows-test--with-sides
+    (let ((left (auto-side-windows-test--side-window a 'left 0))
+          (bottom (auto-side-windows-test--side-window b 'bottom 0))
+          (plain (selected-window)))
+      ;; the two ends are on two sides
+      (auto-side-windows-drag-slot (auto-side-windows-test--drag left bottom))
+      (should (eq (window-buffer left) a))
+      (should (eq (window-buffer bottom) b))
+      ;; the drag ends in an ordinary window
+      (auto-side-windows-drag-slot (auto-side-windows-test--drag left plain))
+      (should (eq (window-buffer left) a))
+      ;; and a drag that ends where it began
+      (auto-side-windows-drag-slot (auto-side-windows-test--drag left left))
+      (should (eq (window-buffer left) a)))))
 (ert-deftest auto-side-windows-test-the-package-binds-no-key ()
   "The package brings commands and no keys of its own.
 The header line of a side window is where a drag belongs, and that
@@ -329,27 +299,19 @@ header line is the reader's to write."
   "The size a reader gave a slot stays with the slot, not with the buffer.
 The windows are deleted and displayed again, which would give the side
 its configured sizes back and undo the hand of the reader."
-  (let ((a (get-buffer-create "*slot a*"))
-        (b (get-buffer-create "*slot b*")))
-    (auto-side-windows-mode 1)
-    (unwind-protect
-        (let* ((one (auto-side-windows-test--side-window a 'left 0))
-               (_three (auto-side-windows-test--side-window b 'left 3)))
-          (when (window-resizable one 4)
-            (window-resize one 4 nil t)
-            (let ((tall (window-total-height one)))
-              (select-window one)
-              (auto-side-windows-move-to-next-slot)
-              (should (equal (auto-side-windows-test--in-slot 'left 0) b))
-              (should (= (window-total-height
-                          (seq-find (lambda (win)
-                                      (equal (window-parameter win 'window-slot) 0))
-                                    (auto-side-windows--side-windows 'left)))
-                         tall)))))
-      (auto-side-windows-mode -1)
-      (auto-side-windows-test--clear-sides)
-      (kill-buffer a)
-      (kill-buffer b))))
-
+  (auto-side-windows-test--with-sides
+    (let ((one (auto-side-windows-test--side-window a 'left 0)))
+      (auto-side-windows-test--side-window b 'left 3)
+      (when (window-resizable one 4)
+        (window-resize one 4 nil t)
+        (let ((tall (window-total-height one)))
+          (select-window one)
+          (auto-side-windows-move-to-next-slot)
+          (should (equal (auto-side-windows-test--in-slot 'left 0) b))
+          (should (= (window-total-height
+                      (seq-find (lambda (win)
+                                  (equal (auto-side-windows--slot win) 0))
+                                (auto-side-windows--side-windows 'left)))
+                     tall)))))))
 (provide 'auto-side-windows-test)
 ;;; auto-side-windows-test.el ends here
