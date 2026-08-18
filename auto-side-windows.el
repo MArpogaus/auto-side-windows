@@ -373,40 +373,40 @@ Before displaying the buffer, it runs `auto-side-windows-before-display-hook'.
 After displaying it in a side window, it runs
 `auto-side-windows-after-display-hook'.  A reused ordinary window gets
 neither that hook nor a side to remember: the buffer went to no side."
-  (when-let* ((side (auto-side-windows--get-buffer-side buffer alist))
-              (slot (or
-                     ;; A caller may name the slot, and one that does
-                     ;; means it: the buffer moves there even when a
-                     ;; window already shows it.  That is how a buffer
-                     ;; changes slot without anyone setting the buffer of
-                     ;; a window behind the back of this function.
-                     (cdr (assq 'slot alist))
-                     (auto-side-windows--get-next-free-slot side buffer))))
-    (let* ((wanted (cdr (assq 'slot alist)))
-           (window-params
-            (append auto-side-windows-common-window-parameters
-                    (auto-side-windows--side-option side 'parameters)))
-           (side-alist
-            (append auto-side-windows-common-alist
-                    (auto-side-windows--side-option side 'alist)))
-           (alist (append alist
-                          side-alist
-                          `((side . ,side)
-                            (slot . ,slot)
-                            (window-parameters . ,window-params)))))
-      (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
-      (let ((window (or (and (not wanted) (get-buffer-window buffer nil))
-                        (display-buffer-in-side-window buffer alist))))
-        ;; The reused window may be an ordinary one.  Then the buffer
-        ;; went to no side and must not claim one, and the hook must
-        ;; not run: it is there to dress a side window, and it would
-        ;; be dressing a plain split.
-        (when (window-parameter window 'window-side)
-          (with-current-buffer buffer
-            (setq-local auto-side-windows-side side))
-          (run-hook-with-args 'auto-side-windows-after-display-hook
-                              buffer window))
-        window))))
+  (let* ((side (auto-side-windows--get-buffer-side buffer alist))
+         ;; A caller may name the slot, and one that does means it: the
+         ;; buffer moves there even when a window already shows it.  That
+         ;; is how a buffer changes slot without anyone setting the
+         ;; buffer of a window behind the back of this function.
+         (wanted (cdr (assq 'slot alist)))
+         (slot (and side
+                    (or wanted
+                        (auto-side-windows--get-next-free-slot side buffer)))))
+    (when slot
+        (let* ((window-params
+              (append auto-side-windows-common-window-parameters
+                      (auto-side-windows--side-option side 'parameters)))
+             (side-alist
+              (append auto-side-windows-common-alist
+                      (auto-side-windows--side-option side 'alist)))
+             (alist (append alist
+                            side-alist
+                            `((side . ,side)
+                              (slot . ,slot)
+                              (window-parameters . ,window-params)))))
+        (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
+        (let ((window (or (and (not wanted) (get-buffer-window buffer nil))
+                          (display-buffer-in-side-window buffer alist))))
+          ;; The reused window may be an ordinary one.  Then the buffer
+          ;; went to no side and must not claim one, and the hook must
+          ;; not run: it is there to dress a side window, and it would
+          ;; be dressing a plain split.
+          (when (window-parameter window 'window-side)
+            (with-current-buffer buffer
+              (setq-local auto-side-windows-side side))
+            (run-hook-with-args 'auto-side-windows-after-display-hook
+                                buffer window))
+          window)))))
 
 (defun auto-side-windows--group-function (candidate transform)
   "Grouping function for auto-side-windows buffers.
@@ -421,14 +421,18 @@ function returns the candidate name."
       (format "%s" side))))
 
 ;;;; Commands
+(defun auto-side-windows--slot (window)
+  "Return the slot of WINDOW.
+A window without one counts as slot zero, which is what
+`display-buffer-in-side-window\=' does with it."
+  (or (window-parameter window 'window-slot) 0))
+
 (defun auto-side-windows--side-windows (side)
-  "Return the windows on SIDE of this frame, in the order of their slots.
-A window without a slot counts as slot zero, which is what
-`display-buffer-in-side-window\=' does with one."
+  "Return the windows on SIDE of this frame, in the order of their slots."
   (sort (seq-filter (lambda (window)
                       (eq (window-parameter window 'window-side) side))
                     (window-list))
-        :key (lambda (window) (or (window-parameter window 'window-slot) 0))))
+        :key #'auto-side-windows--slot))
 
 (defun auto-side-windows--slot-neighbour (window step)
   "Return the window STEP slots away from WINDOW on its side.
@@ -459,14 +463,18 @@ WINDOW is selected."
   (let* ((side (window-parameter window 'window-side))
          (mine (window-buffer window))
          (theirs (window-buffer other))
-         (my-slot (or (window-parameter window 'window-slot) 0))
-         (their-slot (or (window-parameter other 'window-slot) 0))
-         (horizontal (memq side '(left right)))
+         (my-slot (auto-side-windows--slot window))
+         (their-slot (auto-side-windows--slot other))
+         ;; The slots of a left or a right side stand above each other,
+         ;; so their size is a height; the slots of a top or a bottom
+         ;; side stand beside each other, and theirs is a width.
+         (heights (memq side '(left right)))
+         (size (lambda (win) (if heights
+                                 (window-total-height win)
+                               (window-total-width win))))
          (sizes (mapcar (lambda (win)
-                          (cons (or (window-parameter win 'window-slot) 0)
-                                (if horizontal
-                                    (window-total-height win)
-                                  (window-total-width win))))
+                          (cons (auto-side-windows--slot win)
+                                (funcall size win)))
                         (auto-side-windows--side-windows side)))
          (start (window-start window))
          (point (window-point window)))
@@ -475,14 +483,11 @@ WINDOW is selected."
     (display-buffer mine `(nil . ((side . ,side) (slot . ,their-slot))))
     (display-buffer theirs `(nil . ((side . ,side) (slot . ,my-slot))))
     (dolist (win (auto-side-windows--side-windows side))
-      (when-let* ((slot (or (window-parameter win 'window-slot) 0))
-                  (wanted (alist-get slot sizes))
-                  (now (if horizontal
-                           (window-total-height win)
-                         (window-total-width win)))
-                  ((/= wanted now))
-                  ((window-resizable win (- wanted now) (not horizontal))))
-        (window-resize win (- wanted now) (not horizontal) t)))
+      (let ((delta (- (or (alist-get (auto-side-windows--slot win) sizes)
+                          (funcall size win))
+                      (funcall size win))))
+        (when (and (/= delta 0) (window-resizable win delta (not heights)))
+          (window-resize win delta (not heights) t))))
     (when-let* ((now (get-buffer-window mine)))
       (set-window-start now start)
       (set-window-point now point)
@@ -634,17 +639,19 @@ windows, where a press is yours to give away:
     (keymap-set my-header-line-map \"<down-mouse-1>\"
                 #\='auto-side-windows-drag-slot)"
   (interactive "e")
+  ;; The side of the window it starts in is asked first: a press this
+  ;; command does not answer belongs to whoever else wants it, and
+  ;; following the mouse would take it away from them.
   (when-let* ((from (posn-window (event-start event)))
+              ((windowp from))
+              (side (window-parameter from 'window-side))
               (release (auto-side-windows--drag-release event))
               ((consp release))
-              (to (posn-window (event-end release))))
-    (when (and (windowp from)
-               (windowp to)
-               (not (eq from to))
-               (window-parameter from 'window-side)
-               (eq (window-parameter from 'window-side)
-                   (window-parameter to 'window-side)))
-      (auto-side-windows--swap-slots from to))))
+              (to (posn-window (event-end release)))
+              ((windowp to))
+              ((not (eq from to)))
+              ((eq side (window-parameter to 'window-side))))
+    (auto-side-windows--swap-slots from to)))
 
 ;;;; Minor Mode
 ;;;###autoload

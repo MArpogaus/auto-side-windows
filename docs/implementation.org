@@ -62,6 +62,12 @@ window that it can reuse:
 The function returns the highest allowed slot if each slot is in use.
 The new buffer then replaces the buffer in that window.
 
+A caller can name the slot instead, with a =slot= in the action alist.
+=auto-side-windows--display-buffer= then takes that number and skips the
+reuse of a window that shows the buffer already, because a caller who
+names a slot means that slot.  That is how a buffer changes slot without
+anyone setting the buffer of a window: see moving a buffer along a side.
+
 * The display
 
 =auto-side-windows--display-buffer= puts three things together:
@@ -84,6 +90,38 @@ claim one:
 
 The hook is there to dress a side window, and an ordinary window is
 not one.
+
+* Moving a buffer along a side
+
+=auto-side-windows-move-to-next-slot= and its twin take the buffer of
+the side window at point to another slot of that side.  The slots that
+exist are the only ones there are, so the buffer of the slot it moves to
+comes back the other way and no slot is made or left empty.  The last
+slot leads back to the first.
+
+The swap deletes the two windows and displays both buffers again, each
+with the slot of the other in its action alist.  Three things follow:
+
+- Each buffer arrives through the display path, with the parameters and
+  the action alist of its side and with the hooks run for it.
+- Each window is a new one.  Emacs clears the buffer history of a window
+  it makes, and a side window that offers the buffer of its neighbour to
+  =switch-to-prev-buffer= shows two buffers where the reader put one.
+- The sizes come from the side again, so they are measured before the
+  windows go and given back to the slots afterwards.  A side window a
+  reader made taller stays the taller one, whichever buffer moves into
+  it.
+
+=auto-side-windows-drag-slot= does the same from the mouse.  Emacs binds
+a press on a header line to =mouse-drag-header-line=, which resizes the
+window and lets no =drag-mouse-1= out, so the command takes the press
+and follows the mouse itself.  It asks whether the press began in a side
+window before it follows anything: a press this command does not answer
+belongs to whoever else wants it.
+
+The package binds no key, this one included.  A keymap on the header
+line of a side window takes the press before Emacs does; the README
+shows it.
 
 * The toggle
 
@@ -117,6 +155,12 @@ entry that asks its own questions.
 - the options of each side
 - the toggle, in both directions
 - the entry in =display-buffer-alist=, after the mode goes on and off
+- the neighbour of a slot, and that the last leads back to the first
+- the swap: which buffer is in which slot, that the windows are two and
+  keep their sizes, and that neither offers the buffer of the other
+- the drag, and that it does nothing across two sides, into an ordinary
+  window, or where it began
+- that the package binds no key
 
 A batch session has a frame and windows, so the side windows and
 their parameters are testable without a display.
