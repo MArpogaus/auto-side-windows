@@ -103,12 +103,18 @@ back as 17 and 17 after its slot was deleted and displayed again.
 Three parts hold it now.
 
 =auto-side-windows--geometry= and its setter keep an alist of
-=(SIDE SIZE COUNT SLOTS)= in the current tab, or in the frame where
-there are no tabs.  A tab is where Emacs keeps a window configuration,
-so the sizes of a layout belong to the tab that shows it: each tab keeps
-its own, a new tab has none and starts from the options, and a tab that
-closes takes its sizes with it.  No key is needed and nothing has to be
-cleaned up, because the record is a key in the alist of the tab itself.
+=(SIDE SIZE COUNT SLOTS)= in the current tab.  A tab is where Emacs
+keeps a window configuration, so the sizes of a layout belong to the tab
+that shows it: each tab keeps its own, a new tab has none and starts from
+the options, and a tab that closes takes its sizes with it.  No key is
+needed and nothing has to be cleaned up, because the record is a key in
+the alist of the tab itself.
+
+There is a current tab whether or not =tab-bar-mode= is on: measured,
+=tab-bar-tabs= answers =((current-tab (name . "*scratch*") ...))= in a
+frame that never showed a tab bar, and it puts that list into the frame.
+A frame without tabs therefore keeps its sizes in the tab it does not
+show, and the package needs no second place to put them.
 
 =auto-side-windows--measure= runs from
 =window-size-change-functions=.  It measures a side only while the side

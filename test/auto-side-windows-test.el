@@ -305,7 +305,8 @@ header line is the reader's to write."
 The windows are deleted and displayed again, which would give the side
 its configured sizes back and undo the hand of the reader."
   (auto-side-windows-test--with-sides
-    (let ((one (auto-side-windows-test--side-window a 'left 0)))
+    (let ((auto-side-windows-remember-sizes t)
+          (one (auto-side-windows-test--side-window a 'left 0)))
       (auto-side-windows-test--side-window b 'left 3)
       (when (window-resizable one 4)
         (window-resize one 4 nil t)
@@ -325,7 +326,8 @@ its configured sizes back and undo the hand of the reader."
 A window that is deleted gives its lines to a sister, and measuring that
 would keep a size nobody asked for."
   (auto-side-windows-test--with-sides
-    (let ((one (auto-side-windows-test--side-window a 'left 0)))
+    (let ((auto-side-windows-remember-sizes t)
+          (one (auto-side-windows-test--side-window a 'left 0)))
       (auto-side-windows-test--side-window b 'left 3)
       (auto-side-windows--measure nil)
       (skip-unless (window-resizable one 4))
