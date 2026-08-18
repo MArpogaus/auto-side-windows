@@ -214,6 +214,17 @@ The commands need the mode.  It puts one entry into
 side; without the mode Emacs decides where a buffer goes, and
 =auto-side-windows-display-buffer-on-side= gives an ordinary window.
 
+A buffer can also name its side itself, in =auto-side-windows-side=.  A
+file that sets it as a file-local variable always opens on that side,
+whatever the rules say:
+
+#+begin_src emacs-lisp
+  ;; -*- auto-side-windows-side: right; -*-
+#+end_src
+
+The display function writes the variable too, so a buffer that went to a
+side goes back to the same one.  Nil leaves the buffer to the rules.
+
 ** Customization
 
 Every option starts empty, so the package changes nothing until you
@@ -230,7 +241,7 @@ all:
 | =auto-side-windows-{top,bottom}-height=                       | number, function | how tall that side starts                          |
 | =auto-side-windows-{left,right}-width=                        | number, function | how wide that side starts                          |
 | =auto-side-windows-remember-sizes=                            | boolean       | whether a side keeps the size you give it            |
-| =auto-side-windows-{top,bottom,left,right}-alist=             | alist         | the action alist of that side, the size aside        |
+| =auto-side-windows-{top,bottom,left,right}-alist=             | alist         | the action alist of that side; the size belongs above |
 | =auto-side-windows-common-window-parameters=                  | alist         | the window parameters of each side window             |
 | =auto-side-windows-common-alist=                              | alist         | the action alist of each side window                  |
 | =auto-side-windows-reuse-mode-window=                         | alist         | the sides that reuse a window with the same major mode |
@@ -266,9 +277,10 @@ of one window as a =window-height= in an action alist takes one.
                                        (fit-window-to-buffer window 20 5)))
 #+end_src
 
-One option answers for the size, so a =window-width= or a
-=window-height= in the action alist of a side is dropped.  The rest of
-the alist applies as before.
+Put the size here and not in the action alist of the side.  Both are
+read, and this option is the one that wins; a =window-width= or a
+=window-height= left in an =auto-side-windows-*-alist= applies only
+where the option of the side is empty.
 
 Set =auto-side-windows-remember-sizes= and a side window you resize
 keeps its size: the side and each of its slots are measured, and a buffer
@@ -328,7 +340,13 @@ does.  The command follows the mouse itself from there.
 Give the binding a part of the header line that has no other use, a
 stretch of space between the name and the buttons for example: the
 buttons keep their own keymaps.
-The rules of this package are display actions.
+
+A caller can name the slot itself, because the rules of this package are
+display actions: a =(slot . N)= in the action alist of a =display-buffer=
+call puts the buffer in slot =N=, whatever the rules would have picked.
+The search for a free slot counts up from zero, so a negative slot is one
+no other buffer is ever given.  =dirvish-side= asks for slot -1 and keeps
+it to itself that way, without a rule of ours.
 
 ** Integration with Other Packages
 
@@ -478,7 +496,7 @@ line show.  One hook boxes each buffer that goes to a side window:
 
 - The package answers for each buffer that Emacs displays, because
   its entry in =display-buffer-alist= has the condition =t=.  A buffer
-  that matches no rule costs about 43 microseconds.
+  that matches no rule costs 50 to 60 microseconds.
 - A side of a frame holds as many windows as =window-sides-slots=
   allows.  A new buffer replaces the buffer of the last slot when
   each slot is in use.
@@ -489,7 +507,8 @@ line show.  One hook boxes each buffer that goes to a side window:
 
 [[file:docs/implementation.org][docs/implementation.org]] describes the implementation: the entry in
 =display-buffer-alist=, the order of the questions that find the side,
-the slot, and the toggle.
+the slot, the geometry that keeps the sizes of a tab, the swap behind
+the move commands and the drag, and the toggle.
 
 ** Contributions
 

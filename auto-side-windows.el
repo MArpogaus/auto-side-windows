@@ -39,6 +39,11 @@
 ;; Additionally, the package provides commands to toggle side windows or display
 ;; buffers explicitly in one of the four sides manually.
 
+;; A buffer can also move from slot to slot along its side, by command or
+;; by a drag of the header line, and the width of a side and the height of
+;; each of its slots can be remembered per tab, so a layout you resize
+;; comes back as you left it.
+
 ;;; Code:
 ;; The sizes of a side belong to the tab that shows it, and a tab is
 ;; what tab-bar keeps.
@@ -170,8 +175,8 @@ or width of the right side window."
   "Custom alist for top side windows.
 This alist contains display properties which will be applied
 when displaying buffers in the top side window.  The height of the
-window belongs to `auto-side-windows-top-height\=': a `window-height\='
-here is dropped, so that one option answers for the size."
+window belongs to `auto-side-windows-top-height\=', which wins over a
+`window-height\=' here."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -179,7 +184,8 @@ here is dropped, so that one option answers for the size."
   "Custom alist for bottom side windows.
 This alist contains display properties which will be applied
 when displaying buffers in the bottom side window.  The size of the window
-belongs to `auto-side-windows-bottom-height\=', and a size here is dropped."
+belongs to `auto-side-windows-bottom-height\=', which wins over a
+`window-height\=' here."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -222,9 +228,10 @@ A side window that you resize is measured, and a buffer displayed in
 that side or slot later gets the size back, so it survives a toggle, a
 killed buffer or a move from slot to slot.
 
-The sizes belong to the tab they were measured in, and to the frame
-where there are no tabs.  A tab that has none starts from the size
-options of the sides.  Nothing is remembered across sessions.
+The sizes belong to the tab they were measured in, and Emacs keeps a
+current tab whether or not `tab-bar-mode\=' is on.  A tab that has none
+starts from the size options of the sides.  Nothing is remembered across
+sessions.
 
 Nil, the default, forgets them: every side window is then made with the
 size its side names."
@@ -234,8 +241,9 @@ size its side names."
 (defcustom auto-side-windows-left-alist nil
   "Custom alist for left side windows.
 This alist contains display properties which will be applied
-when displaying buffers in the left side window.  The size of the window
-belongs to `auto-side-windows-left-width\=', and a size here is dropped."
+when displaying buffers in the left side window.  The width of the
+window belongs to `auto-side-windows-left-width\=', which wins over a
+`window-width\=' here."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -243,8 +251,8 @@ belongs to `auto-side-windows-left-width\=', and a size here is dropped."
   "Custom alist for right side windows.
 This alist contains display properties which will be applied
 when displaying buffers in the right side window.  The width of the
-window belongs to `auto-side-windows-right-width\=': a `window-width\='
-here is dropped, so that one option answers for the size."
+window belongs to `auto-side-windows-right-width\=', which wins over a
+`window-width\=' here."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -258,9 +266,10 @@ say otherwise here; `no-other-window', `tab-line-format' and
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-common-alist nil
-  "Custom alist for all side windows.
-These parameters will be applied to all side windows created by
-`auto-side-windows-mode'."
+  "Action alist entries for all side windows.
+The entries apply to every side window `auto-side-windows-mode' makes,
+before those of the side.  The size of a side belongs to the option of
+that side, which wins over a size here."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -315,15 +324,53 @@ display function also sets it, so the buffer remembers where it went.")
 See `auto-side-windows-toggle-side-window'.")
 
 ;;;; Helper Functions
-(defun auto-side-windows--buffer-match-condition (majormodes &optional buffernames extra-conds)
-  "Get condition to match buffers with given MAJORMODES or BUFFERNAMES.
-MAJORMODES are the major modes to match, while BUFFERNAMES
-are optional regex patterns for buffer names.  EXTRA-CONDS are
-additional conditions to refine the matching process."
-  (let ((modes-cond `(or ,@(mapcar (lambda (mode) `(derived-mode . ,mode)) majormodes))))
-    (when buffernames (setq modes-cond `(or (or ,@buffernames) ,modes-cond)))
-    (setq modes-cond (append modes-cond extra-conds))
-    modes-cond))
+(defconst auto-side-windows--side-options
+  '((top    parameters auto-side-windows-top-window-parameters
+            alist      auto-side-windows-top-alist
+            size       auto-side-windows-top-height
+            modes      auto-side-windows-top-buffer-modes
+            names      auto-side-windows-top-buffer-names
+            conditions auto-side-windows-top-extra-conditions)
+    (bottom parameters auto-side-windows-bottom-window-parameters
+            alist      auto-side-windows-bottom-alist
+            size       auto-side-windows-bottom-height
+            modes      auto-side-windows-bottom-buffer-modes
+            names      auto-side-windows-bottom-buffer-names
+            conditions auto-side-windows-bottom-extra-conditions)
+    (left   parameters auto-side-windows-left-window-parameters
+            alist      auto-side-windows-left-alist
+            size       auto-side-windows-left-width
+            modes      auto-side-windows-left-buffer-modes
+            names      auto-side-windows-left-buffer-names
+            conditions auto-side-windows-left-extra-conditions)
+    (right  parameters auto-side-windows-right-window-parameters
+            alist      auto-side-windows-right-alist
+            size       auto-side-windows-right-width
+            modes      auto-side-windows-right-buffer-modes
+            names      auto-side-windows-right-buffer-names
+            conditions auto-side-windows-right-extra-conditions))
+  "The option of each side that answers for each part of it.
+A part is `parameters\=' for the window parameters, `alist\=' for the
+action alist, `size\=' for the width or the height a window starts with,
+and `modes\=', `names\=' and `conditions\=' for the rules that send a
+buffer to the side.  The names are written out rather than made from the
+side, so the compiler reads them and a search finds them.")
+
+(defun auto-side-windows--side-option (side part)
+  "Return the value of the option of SIDE that PART names.
+See `auto-side-windows--side-options\=' for the parts."
+  (when-let* ((option (plist-get (alist-get side auto-side-windows--side-options)
+                                 part)))
+    (symbol-value option)))
+
+(defun auto-side-windows--side-condition (side)
+  "Return the condition that sends a buffer to SIDE.
+The names, the modes and the extra conditions of SIDE make one condition
+of the kind `buffer-match-p\=' takes."
+  `(or ,@(auto-side-windows--side-option side 'names)
+       ,@(mapcar (lambda (mode) `(derived-mode . ,mode))
+                 (auto-side-windows--side-option side 'modes))
+       ,@(auto-side-windows--side-option side 'conditions)))
 
 (defun auto-side-windows--get-buffer-side (buffer &optional alist)
   "Determine which side BUFFER should be displayed in.
@@ -338,38 +385,19 @@ Optional ALIST may contain a specific side."
       (alist-get 'side alist))
      ;; A file-local setting, or the side this buffer went to before.
      (auto-side-windows-side)
-     ((buffer-match-p (auto-side-windows--buffer-match-condition
-                       auto-side-windows-top-buffer-modes
-                       auto-side-windows-top-buffer-names
-                       auto-side-windows-top-extra-conditions)
-                      buffer alist)
-      'top)
-     ((buffer-match-p (auto-side-windows--buffer-match-condition
-                       auto-side-windows-bottom-buffer-modes
-                       auto-side-windows-bottom-buffer-names
-                       auto-side-windows-bottom-extra-conditions)
-                      buffer alist)
-      'bottom)
-     ((buffer-match-p (auto-side-windows--buffer-match-condition
-                       auto-side-windows-left-buffer-modes
-                       auto-side-windows-left-buffer-names
-                       auto-side-windows-left-extra-conditions)
-                      buffer alist)
-      'left)
-     ((buffer-match-p (auto-side-windows--buffer-match-condition
-                       auto-side-windows-right-buffer-modes
-                       auto-side-windows-right-buffer-names
-                       auto-side-windows-right-extra-conditions)
-                      buffer alist)
-      'right)
-     (t nil))))
+     (t (seq-find (lambda (side)
+                    (buffer-match-p (auto-side-windows--side-condition side)
+                                    buffer alist))
+                  '(top bottom left right))))))
 
 (defun auto-side-windows--get-next-free-slot (side buffer)
   "Return the slot number to display BUFFER in on SIDE.
-Slots are numbered from zero.  Side windows showing a buffer with the
-same major mode as BUFFER are reused when
-`auto-side-windows-reuse-mode-window' is non-nil for SIDE; the lowest
-such slot wins.  Otherwise the lowest free slot is returned.
+Slots are numbered from zero, and this never returns a negative one, so
+a slot a caller asks for below zero stays that caller\='s own.
+
+Side windows showing a buffer with the same major mode as BUFFER are
+reused when `auto-side-windows-reuse-mode-window' is non-nil for SIDE;
+the lowest such slot wins.  Otherwise the lowest free slot is returned.
 
 When `window-sides-slots' limits the number of slots on SIDE and all of
 them are taken, the last slot is returned and thus reused.  A nil entry
@@ -395,37 +423,12 @@ in that variable means no limit."
               (setq slot (1+ slot)))
             slot)))))
 
-(defconst auto-side-windows--side-options
-  '((top    auto-side-windows-top-window-parameters
-            auto-side-windows-top-alist
-            auto-side-windows-top-height)
-    (bottom auto-side-windows-bottom-window-parameters
-            auto-side-windows-bottom-alist
-            auto-side-windows-bottom-height)
-    (left   auto-side-windows-left-window-parameters
-            auto-side-windows-left-alist
-            auto-side-windows-left-width)
-    (right  auto-side-windows-right-window-parameters
-            auto-side-windows-right-alist
-            auto-side-windows-right-width))
-  "The options of each side: window parameters, action alist and size.
-The names are written out rather than made from the side, so the
-compiler reads them and a search finds them.")
-
-(defun auto-side-windows--side-option (side part)
-  "Return the value of the option of SIDE that PART names.
-PART is `parameters\=' for the window parameters, or `alist\=' for the
-action alist."
-  (when-let* ((entry (assq side auto-side-windows--side-options))
-              (index (pcase part ('parameters 1) ('alist 2) ('size 3))))
-    (symbol-value (nth index entry))))
-
 ;;;; Geometry
 
 ;; What a side and its slots measure is kept where the layout is kept.
-;; A tab holds a window configuration, so the sizes belong to the tab;
-;; without tabs they belong to the frame.  A tab that has none starts
-;; from the size of its side, and a closed tab takes its sizes with it.
+;; A tab holds a window configuration, so the sizes belong to the tab.
+;; A tab that has none starts from the size of its side, and a closed tab
+;; takes its sizes with it.
 
 (defun auto-side-windows--geometry ()
   "Return the geometry of the current tab.
@@ -467,15 +470,16 @@ a window changes no count."
       (dolist (side '(top bottom left right))
         (when-let* ((windows (auto-side-windows--side-windows side)))
           (let* ((across (auto-side-windows--across-p side))
+                 (now (length windows))
                  (entry (alist-get side geometry))
                  (count (alist-get 'count entry)))
             (setf (alist-get side geometry)
-                  (if (and count (/= count (length windows)))
+                  (if (and count (/= count now))
                       ;; the layout changed: keep the sizes, take the count
-                      (cons (cons 'count (length windows))
+                      (cons (cons 'count now)
                             (assq-delete-all 'count (copy-sequence entry)))
                     `((size . ,(auto-side-windows--window-size (car windows) across))
-                      (count . ,(length windows))
+                      (count . ,now)
                       (slots . ,(mapcar
                                  (lambda (window)
                                    (cons (auto-side-windows--slot window)
@@ -525,32 +529,25 @@ neither that hook nor a side to remember: the buffer went to no side."
                     (or wanted
                         (auto-side-windows--get-next-free-slot side buffer)))))
     (when slot
-        (let* ((window-params
-              (append auto-side-windows-common-window-parameters
-                      (auto-side-windows--side-option side 'parameters)))
-             (across (auto-side-windows--across-p side))
-             ;; One option answers for the size of a side, so a size in
-             ;; its action alist is dropped.
-             (side-alist
-              (assq-delete-all
-               'window-height
-               (assq-delete-all
-                'window-width
-                (append auto-side-windows-common-alist
-                        (copy-sequence
-                         (auto-side-windows--side-option side 'alist))))))
+      (let* ((across (auto-side-windows--across-p side))
              (side-size (auto-side-windows--side-option side 'size))
              (alist (append alist
-                            ;; What the side measured last comes first: it
-                            ;; is what the reader last asked for.
+                            ;; The order is the order of the say: what the
+                            ;; reader last resized beats the size option of
+                            ;; the side, and that beats its action alist.
                             (auto-side-windows--sizes side slot)
                             (when side-size
                               (list (cons (if across 'window-width 'window-height)
                                           side-size)))
-                            side-alist
+                            auto-side-windows-common-alist
+                            (auto-side-windows--side-option side 'alist)
                             `((side . ,side)
                               (slot . ,slot)
-                              (window-parameters . ,window-params)))))
+                              (window-parameters
+                               . ,(append
+                                   auto-side-windows-common-window-parameters
+                                   (auto-side-windows--side-option
+                                    side 'parameters)))))))
         (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
         (let ((window (or (and (not wanted) (get-buffer-window buffer nil))
                           (display-buffer-in-side-window buffer alist))))
@@ -568,7 +565,7 @@ neither that hook nor a side to remember: the buffer went to no side."
 (defun auto-side-windows--group-function (candidate transform)
   "Grouping function for auto-side-windows buffers.
 
-The function take two arguments, the completion CANDIDATE, and TRANSFORM, which
+The function takes two arguments, the completion CANDIDATE, and TRANSFORM, which
 is a boolean flag.  If transform is nil, the function returns the group title to
 which the candidate belongs.  The returned title can also be nil.  Otherwise the
 function returns the candidate name."
