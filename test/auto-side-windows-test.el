@@ -177,15 +177,20 @@ the table is a test failure and not a nil at display time."
 
 (defmacro auto-side-windows-test--with-sides (&rest body)
   "Run BODY with the mode on and two buffers, `a\=' and `b\='.
-The side windows and the two buffers go afterwards, and the mode off.
+The side windows, the two buffers and the measured sizes go afterwards,
+and the mode off.
 A side window may not be the only window of a frame, so the sides are
 deleted one by one rather than with `delete-other-windows\='."
   (declare (indent 0))
   `(let ((a (get-buffer-create "*slot a*"))
          (b (get-buffer-create "*slot b*")))
      (auto-side-windows-mode 1)
+     ;; The sizes of a side outlive a window, so they outlive a test:
+     ;; each one starts and ends without any.
+     (auto-side-windows--set-geometry nil)
      (unwind-protect
          (progn ,@body)
+       (auto-side-windows--set-geometry nil)
        (auto-side-windows-mode -1)
        (dolist (window (window-list))
          (when (window-parameter window 'window-side)
@@ -304,6 +309,8 @@ its configured sizes back and undo the hand of the reader."
       (auto-side-windows-test--side-window b 'left 3)
       (when (window-resizable one 4)
         (window-resize one 4 nil t)
+        ;; No redisplay here, and none needed: the swap measures the
+        ;; windows before it deletes them.
         (let ((tall (window-total-height one)))
           (select-window one)
           (auto-side-windows-move-to-next-slot)
@@ -313,5 +320,73 @@ its configured sizes back and undo the hand of the reader."
                                   (equal (auto-side-windows--slot win) 0))
                                 (auto-side-windows--side-windows 'left)))
                      tall)))))))
+(ert-deftest auto-side-windows-test-measure-keeps-what-a-reader-set ()
+  "A resize is measured; a window that goes does not spoil the measurement.
+A window that is deleted gives its lines to a sister, and measuring that
+would keep a size nobody asked for."
+  (auto-side-windows-test--with-sides
+    (let ((one (auto-side-windows-test--side-window a 'left 0)))
+      (auto-side-windows-test--side-window b 'left 3)
+      (auto-side-windows--measure nil)
+      (skip-unless (window-resizable one 4))
+      (window-resize one 4 nil t)
+      (auto-side-windows--measure nil)
+      (let* ((entry (alist-get 'left (auto-side-windows--geometry)))
+             (slots (alist-get 'slots entry)))
+        (should (= (alist-get 'count entry) 2))
+        (should (= (alist-get 0 slots) (window-total-height one)))
+        (should (= (alist-get 'size entry) (window-total-width one)))
+        ;; a slot goes: the count follows, the sizes stay
+        (delete-window one)
+        (auto-side-windows--measure nil)
+        (let ((after (alist-get 'left (auto-side-windows--geometry))))
+          (should (= (alist-get 'count after) 1))
+          (should (equal (alist-get 'slots after) slots)))))))
+
+(ert-deftest auto-side-windows-test-sizes-name-the-right-side ()
+  "The size of a side and the size of a slot are the two directions.
+A left side has a width, and each of its slots a height; a top side has
+a height, and each of its slots a width."
+  (let ((auto-side-windows-remember-sizes t))
+    (cl-letf (((symbol-function 'auto-side-windows--geometry)
+               (lambda ()
+                 '((left (size . 40) (count . 2) (slots (0 . 20)))
+                   (top (size . 15) (count . 1) (slots (0 . 90)))))))
+      (should (equal (auto-side-windows--sizes 'left 0)
+                     '((window-width . 40) (window-height . 20))))
+      (should (equal (auto-side-windows--sizes 'top 0)
+                     '((window-height . 15) (window-width . 90))))
+      ;; a slot nobody measured takes the size of its side alone
+      (should (equal (auto-side-windows--sizes 'left 3)
+                     '((window-width . 40))))
+      ;; and a side nobody measured has nothing to say
+      (should-not (auto-side-windows--sizes 'bottom 0)))))
+
+(ert-deftest auto-side-windows-test-the-switch-forgets ()
+  "With `auto-side-windows-remember-sizes\=' nil nothing is kept or given back."
+  (auto-side-windows-test--with-sides
+    (let ((auto-side-windows-remember-sizes nil))
+      (auto-side-windows-test--side-window a 'left 0)
+      (auto-side-windows--measure nil)
+      (should-not (auto-side-windows--geometry))
+      (should-not (auto-side-windows--sizes 'left 0)))))
+
+(ert-deftest auto-side-windows-test-a-size-comes-from-its-option ()
+  "The size of a side comes from its option, and a size in its alist goes.
+One option answers for the size, so a `window-width\=' left in the action
+alist of a side is dropped."
+  (auto-side-windows-test--with-sides
+    (let ((auto-side-windows-remember-sizes nil)
+          (auto-side-windows-left-width 30)
+          (auto-side-windows-left-alist '((window-width . 70)
+                                          (dedicated . t)))
+          (auto-side-windows-left-buffer-names '("\\`\\*slot")))
+      (auto-side-windows--display-buffer a nil)
+      (let ((window (car (auto-side-windows--side-windows 'left))))
+        (should window)
+        (should (= (window-total-width window) 30))
+        ;; the rest of the alist still applies
+        (should (window-dedicated-p window))))))
+
 (provide 'auto-side-windows-test)
 ;;; auto-side-windows-test.el ends here
