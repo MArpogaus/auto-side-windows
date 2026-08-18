@@ -240,6 +240,7 @@ customize-group RET auto-side-windows RET= shows them all:
 | =auto-side-windows-display-buffer-on-side=            | the same, and ask for the side in the minibuffer    |
 | =auto-side-windows-switch-to-buffer=                  | switch to a buffer that is in a side window         |
 | =auto-side-windows-move-to-{next,previous}-slot=       | move the buffer along its side, slot for slot       |
+| =auto-side-windows-drag-slot=                          | the same with the mouse, from a header line          |
 
 =auto-side-windows-switch-to-buffer= needs
 =switch-to-buffer-obey-display-actions= at a value other than nil.
@@ -247,9 +248,28 @@ customize-group RET auto-side-windows RET= shows them all:
 The move commands work with the slots that are there and make none.
 They swap two buffers: with a buffer in slot zero and another in slot
 three, one step takes the first to slot three and brings the second to
-slot zero.  The slots and the sizes of the windows stay as they are,
-and point follows the buffer, so a repeated key keeps moving the same
-one.  The package binds no key for them; bind what you like.
+slot zero.  Point follows the buffer, so a repeated key keeps moving the
+same one.  The package binds no key for them; bind what you like.
+
+A swap displays both buffers again, in the slot the other one had, so
+each arrives with the window parameters and the action alist of its
+side and with the display hooks run for it.  A slot keeps the size you
+gave it: a side window you made taller stays the taller one, whichever
+buffer moves into it.
+
+=auto-side-windows-drag-slot= does the same with the mouse.  It is the
+one key this package binds, on the header line of a side window:
+
+#+begin_src emacs-lisp
+  ;; what auto-side-windows-mode-map holds
+  "<header-line> <drag-mouse-1>"
+#+end_src
+
+Press mouse-1 on the header line of a side window, drag to another side
+window of the same side and let go, and the two buffers change places.
+A drag that ends anywhere else does nothing, because a slot belongs to
+one side.  A side window needs a header line for this; the window
+parameters of a side decide that.
 The rules of this package are display actions.
 
 ** Integration with Other Packages

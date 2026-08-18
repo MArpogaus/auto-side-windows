@@ -442,16 +442,18 @@ on its side."
     (nth (mod (+ at step) (length windows)) windows)))
 
 (defun auto-side-windows--swap-slots (window other)
-  "Show the buffer of WINDOW in OTHER and the buffer of OTHER in WINDOW.
-Both go through `auto-side-windows--display-buffer\=', which names the
-slot each buffer is to take, so they arrive with the parameters and the
-action alist of their side and the display hooks run for them.
+  "Show the buffer of WINDOW in the slot of OTHER, and the other way round.
+The two windows go, and each buffer is displayed again in the slot the
+other one had.  `auto-side-windows--display-buffer\=' takes the slot out
+of the action alist, so the buffers arrive with the parameters and the
+action alist of their side, the display hooks run for them, and each
+window is new: it carries no buffer in its history, where
+`switch-to-prev-buffer\=' would find the buffer of the neighbour and show
+two buffers in a window that holds one.
 
-The windows keep their slots and their sizes.  Neither keeps the buffer
-it had in its history: the two buffers changed place, and a side window
-that offers the buffer of its neighbour to `switch-to-prev-buffer\=' shows
-two buffers where the reader put one.
-
+A slot keeps its size: a reader who made the upper window tall means
+the upper window, not the buffer that was in it, so the sizes are
+measured before the windows go and given back to the slots afterwards.
 Point follows the buffer, so the window that ends up with the buffer of
 WINDOW is selected."
   (let* ((side (window-parameter window 'window-side))
@@ -459,13 +461,28 @@ WINDOW is selected."
          (theirs (window-buffer other))
          (my-slot (or (window-parameter window 'window-slot) 0))
          (their-slot (or (window-parameter other 'window-slot) 0))
+         (horizontal (memq side '(left right)))
+         (sizes (mapcar (lambda (win)
+                          (cons (or (window-parameter win 'window-slot) 0)
+                                (if horizontal
+                                    (window-total-height win)
+                                  (window-total-width win))))
+                        (auto-side-windows--side-windows side)))
          (start (window-start window))
          (point (window-point window)))
+    (delete-window window)
+    (delete-window other)
     (display-buffer mine `(nil . ((side . ,side) (slot . ,their-slot))))
     (display-buffer theirs `(nil . ((side . ,side) (slot . ,my-slot))))
-    (dolist (win (list window other))
-      (set-window-prev-buffers win nil)
-      (set-window-next-buffers win nil))
+    (dolist (win (auto-side-windows--side-windows side))
+      (when-let* ((slot (or (window-parameter win 'window-slot) 0))
+                  (wanted (alist-get slot sizes))
+                  (now (if horizontal
+                           (window-total-height win)
+                         (window-total-width win)))
+                  ((/= wanted now))
+                  ((window-resizable win (- wanted now) (not horizontal))))
+        (window-resize win (- wanted now) (not horizontal) t)))
     (when-let* ((now (get-buffer-window mine)))
       (set-window-start now start)
       (set-window-point now point)
@@ -585,6 +602,33 @@ non-nil value to respect the display buffer actions defined by this package."
   (if buffer (switch-to-buffer buffer)
     (message "No side buffers.")))
 
+;;;###autoload
+(defun auto-side-windows-drag-slot (event)
+  "Move a buffer to the slot its header line was dragged to.
+EVENT is the drag: it starts on the header line of a side window and
+ends in another window.  Both have to be side windows of the same side,
+because a slot belongs to a side; a drag that ends anywhere else does
+nothing.
+
+The two buffers change place, as `auto-side-windows-move-to-next-slot\='
+moves them."
+  (interactive "e")
+  (let* ((from (posn-window (event-start event)))
+         (to (posn-window (event-end event))))
+    (when (and (windowp from)
+               (windowp to)
+               (not (eq from to))
+               (window-parameter from 'window-side)
+               (eq (window-parameter from 'window-side)
+                   (window-parameter to 'window-side)))
+      (auto-side-windows--swap-slots from to))))
+
+(defvar-keymap auto-side-windows-mode-map
+  :doc "Keymap of `auto-side-windows-mode'.
+It holds the drag of a header line and nothing else: every command of
+this package is for you to bind."
+  "<header-line> <drag-mouse-1>" #'auto-side-windows-drag-slot)
+
 ;;;; Minor Mode
 ;;;###autoload
 (define-minor-mode auto-side-windows-mode
@@ -594,6 +638,7 @@ in defined side windows based on their names or modes.  It adds
 provided functions to `display-buffer-alist' to enable this feature."
   :global t
   :group 'auto-side-windows
+  :keymap auto-side-windows-mode-map
   (if auto-side-windows-mode
       (add-to-list 'display-buffer-alist
                    '(t auto-side-windows--display-buffer))
