@@ -213,6 +213,7 @@ Slot zero holds A and slot three holds B; after the move slot three
 holds A and slot zero holds B, and no slot was made or left empty."
   (let ((a (get-buffer-create "*slot a*"))
         (b (get-buffer-create "*slot b*")))
+    (auto-side-windows-mode 1)
     (unwind-protect
         (let ((one (auto-side-windows-test--side-window a 'left 0))
               (three (auto-side-windows-test--side-window b 'left 3)))
@@ -230,7 +231,12 @@ holds A and slot zero holds B, and no slot was made or left empty."
           (auto-side-windows-move-to-previous-slot)
           (should (eq (window-buffer one) a))
           (should (eq (window-buffer three) b))
-          (should (eq (selected-window) one)))
+          (should (eq (selected-window) one))
+          ;; and neither window offers the buffer of the other to
+          ;; `switch-to-prev-buffer'
+          (should-not (window-prev-buffers one))
+          (should-not (window-prev-buffers three)))
+      (auto-side-windows-mode -1)
       (auto-side-windows-test--clear-sides)
       (kill-buffer a)
       (kill-buffer b))))
