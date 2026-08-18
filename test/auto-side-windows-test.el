@@ -111,10 +111,14 @@ guard against."
   "Displaying on a side works from a normal window.
 The command used to reference an unbound variable on this path."
   (with-temp-buffer
-    (let ((display-buffer-alist nil)
-          (buffer (current-buffer)))
-      (should (windowp (progn (auto-side-windows-display-buffer-on-side 'right)
-                              (get-buffer-window buffer)))))))
+    (let* ((display-buffer-alist nil)
+           (buffer (current-buffer))
+           (window (progn (auto-side-windows-display-buffer-on-side 'right)
+                          (get-buffer-window buffer))))
+      (should (windowp window))
+      ;; and it is a side window, on the side that was asked for
+      (should (eq (window-parameter window 'window-side) 'right))
+      (should (eq (window-buffer window) buffer)))))
 
 (ert-deftest auto-side-windows-test-reused-plain-window-claims-no-side ()
   "A buffer already on screen in an ordinary window stays ordinary.

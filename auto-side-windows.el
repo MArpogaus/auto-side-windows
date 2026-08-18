@@ -456,8 +456,14 @@ and `auto-side-windows-after-display-hook' after."
       (with-current-buffer buffer
         (kill-local-variable 'auto-side-windows--detached))
       (switch-to-prev-buffer window 'bury))
-    (display-buffer buffer `(nil . ((side . ,side)
-                                    (post-command-select-window . t))))))
+    ;; The display function of this package, not the fallback of Emacs:
+    ;; a `side' in an action alist says nothing by itself, so the buffer
+    ;; landed in an ordinary window wherever no rule named it.  This way
+    ;; it lands in the side window of SIDE, with the parameters and the
+    ;; action alist that side carries.
+    (display-buffer buffer `((auto-side-windows--display-buffer)
+                             . ((side . ,side)
+                                (post-command-select-window . t))))))
 
 ;;;###autoload
 (defun auto-side-windows-display-buffer-top ()
