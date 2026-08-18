@@ -126,7 +126,14 @@ A frame without tabs therefore keeps its sizes in the tab it does not
 show, and the package needs no second place to put them.
 
 =auto-side-windows--measure= runs from
-=window-size-change-functions=.  It measures a side only while the side
+=window-size-change-functions=, which names the frame whose windows
+changed.  That frame is the one measured, and not the selected one: a
+side window resized on a second frame would otherwise be written against
+the tab of the frame in front.  Measured with the old code, a top window
+of 22 lines on the frame that was not selected left an empty record and
+came back at the 10 lines of its option.
+
+It measures a side only while the side
 has as many windows as it had when it was measured last.  A window that
 goes gives its lines to a sister, and measuring then would keep a size
 nobody asked for; a reader who resizes a window changes no count.  The
@@ -216,7 +223,8 @@ one entry that asks its own questions.
 - the drag, and that it does nothing across two sides, into an ordinary
   window, or where it began
 - that the package binds no key
-- the measurement, and that a window which goes leaves the sizes alone
+- the measurement, that a window which goes leaves the sizes alone, and
+  that the frame it is given is the frame it reads
 - which action alist entries a record turns into, for a side and a slot
 - that the switch forgets both the measuring and the giving back
 - that the size of a side comes from its option before its alist
