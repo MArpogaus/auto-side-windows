@@ -144,46 +144,54 @@ them goes to this side, in addition to the name and mode rules."
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-top-window-parameters nil
-  "Custom window parameters for top side windows.
-This alist can be used to specify parameters like the height
-or width of the top side window."
+  "Window parameters for top side windows.
+An alist of the kind `set-window-parameter\=' takes, such as
+`no-other-window\=' or a `mode-line-format\=' of none.  The size of the
+window is not a window parameter; see
+`auto-side-windows-top-height\='."
   :type 'alist
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-bottom-window-parameters nil
-  "Custom window parameters for bottom side windows.
-This alist can be used to specify parameters like the height
-or width of the bottom side window."
+  "Window parameters for bottom side windows.
+An alist of the kind `set-window-parameter\=' takes, such as
+`no-other-window\=' or a `mode-line-format\=' of none.  The size of the
+window is not a window parameter; see
+`auto-side-windows-bottom-height\='."
   :type 'alist
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-left-window-parameters nil
-  "Custom window parameters for left side windows.
-This alist can be used to specify parameters like the height
-or width of the left side window."
+  "Window parameters for left side windows.
+An alist of the kind `set-window-parameter\=' takes, such as
+`no-other-window\=' or a `mode-line-format\=' of none.  The size of the
+window is not a window parameter; see
+`auto-side-windows-left-width\='."
   :type 'alist
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-right-window-parameters nil
-  "Custom window parameters for right side windows.
-This alist can be used to specify parameters like the height
-or width of the right side window."
+  "Window parameters for right side windows.
+An alist of the kind `set-window-parameter\=' takes, such as
+`no-other-window\=' or a `mode-line-format\=' of none.  The size of the
+window is not a window parameter; see
+`auto-side-windows-right-width\='."
   :type 'alist
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-top-alist nil
-  "Custom alist for top side windows.
-This alist contains display properties which will be applied
-when displaying buffers in the top side window.  The height of the
+  "Action alist entries for top side windows.
+The entries apply when a buffer is displayed in a top side
+window.  The height of the
 window belongs to `auto-side-windows-top-height\=', which wins over a
 `window-height\=' here."
   :type 'alist
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-bottom-alist nil
-  "Custom alist for bottom side windows.
-This alist contains display properties which will be applied
-when displaying buffers in the bottom side window.  The size of the window
+  "Action alist entries for bottom side windows.
+The entries apply when a buffer is displayed in a bottom side
+window.  The height of the window
 belongs to `auto-side-windows-bottom-height\=', which wins over a
 `window-height\=' here."
   :type 'alist
@@ -239,18 +247,18 @@ size its side names."
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-left-alist nil
-  "Custom alist for left side windows.
-This alist contains display properties which will be applied
-when displaying buffers in the left side window.  The width of the
+  "Action alist entries for left side windows.
+The entries apply when a buffer is displayed in a left side
+window.  The width of the
 window belongs to `auto-side-windows-left-width\=', which wins over a
 `window-width\=' here."
   :type 'alist
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-right-alist nil
-  "Custom alist for right side windows.
-This alist contains display properties which will be applied
-when displaying buffers in the right side window.  The width of the
+  "Action alist entries for right side windows.
+The entries apply when a buffer is displayed in a right side
+window.  The width of the
 window belongs to `auto-side-windows-right-width\=', which wins over a
 `window-width\=' here."
   :type 'alist
@@ -281,30 +289,29 @@ An entry names a side, as in \='((right . t))."
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-before-display-hook nil
-  "Hook run before displaying a buffer in a side window.
-This hook allows users to execute custom code or functions
-before a buffer is placed in a side window."
+  "Hook run before a buffer goes to a side window.
+Each function is called with the buffer.  The window does not exist
+yet."
   :type 'hook
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-after-display-hook nil
-  "Hook run after displaying a buffer in a side window.
-This hook allows users to execute custom code or functions
-after a buffer has been placed in a side window."
+  "Hook run after a buffer went to a side window.
+Each function is called with the buffer and the window.  A buffer that
+was shown in an ordinary window instead went to no side, and the hook
+does not run for it."
   :type 'hook
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-before-toggle-hook nil
-  "Hook run before toggling the display of a buffer.
-This hook allows users to execute custom code or functions
-before the toggle action of a buffer in a side window."
+  "Hook run before `auto-side-windows-toggle-side-window\=' moves a buffer.
+Each function is called with the buffer."
   :type 'hook
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-after-toggle-hook nil
-  "Hook run after toggling the display of a buffer.
-This hook allows users to execute custom code or functions
-after the toggle action of a buffer in a side window."
+  "Hook run after `auto-side-windows-toggle-side-window\=' moved a buffer.
+Each function is called with the buffer."
   :type 'hook
   :group 'auto-side-windows)
 
@@ -373,11 +380,10 @@ of the kind `buffer-match-p\=' takes."
        ,@(auto-side-windows--side-option side 'conditions)))
 
 (defun auto-side-windows--get-buffer-side (buffer &optional alist)
-  "Determine which side BUFFER should be displayed in.
-This function checks the buffer against user-defined conditions relative
-to the side windows.  It returns \\='top, \\='bottom, \\='left, \\='right
-or \\='detached, and nil if no condition matches.
-Optional ALIST may contain a specific side."
+  "Return the side BUFFER goes to: top, bottom, left, right or detached.
+Nil where no rule matches, which leaves the buffer to Emacs.  A `side\\='
+in ALIST answers before the rules do, and ALIST is also passed to
+`buffer-match-p\\=' for the conditions that ask for it."
   (with-current-buffer buffer
     (cond
      (auto-side-windows--detached 'detached)
@@ -509,22 +515,21 @@ Nil where nothing was measured, or where the sizes are not remembered."
                               slot-size))))))))
 
 (defun auto-side-windows--display-buffer (buffer alist)
-  "Custom display buffer function for `auto-side-windows-mode'.
-BUFFER is the buffer to display and ALIST contains display parameters.
+  "Display BUFFER in a side window, for `display-buffer-alist'.
+ALIST is the action alist of the display.  The side comes from a `side\='
+in ALIST or from the rules, and the slot from a `slot\=' in ALIST or from
+`auto-side-windows--get-next-free-slot\='.  Nil where no side answers:
+Emacs then displays the buffer the way it would without this package.
 
-This function determines the appropriate side for the buffer and
-tries to display BUFFER in the next free side window slot.
-If the BUFFER is already displayed in an existing window it is reused, even
-if not a side window.
+The sizes, the action alist and the window parameters of the side go in
+front of ALIST, `auto-side-windows-before-display-hook\=' runs, and
+`display-buffer-in-side-window\=' makes the window — or the window that
+already shows BUFFER is reused, unless the caller named a slot.
 
-If `auto-side-windows-reuse-mode-window' is t for the side the first side
-window containing a buffer with the same major mode is used.
-If no free slot is found, the largest allowed slot number is used.
-
-Before displaying the buffer, it runs `auto-side-windows-before-display-hook'.
-After displaying it in a side window, it runs
-`auto-side-windows-after-display-hook'.  A reused ordinary window gets
-neither that hook nor a side to remember: the buffer went to no side."
+A reused window can be an ordinary one.  The buffer then went to no side:
+it remembers none in `auto-side-windows-side\=', and
+`auto-side-windows-after-display-hook\=' does not run, because that hook
+is there to dress a side window."
   (let* ((side (auto-side-windows--get-buffer-side buffer alist))
          ;; A caller may name the slot, and one that does means it: the
          ;; buffer moves there even when a window already shows it.  That
