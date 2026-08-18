@@ -374,8 +374,16 @@ After displaying it in a side window, it runs
 `auto-side-windows-after-display-hook'.  A reused ordinary window gets
 neither that hook nor a side to remember: the buffer went to no side."
   (when-let* ((side (auto-side-windows--get-buffer-side buffer alist))
-              (slot (auto-side-windows--get-next-free-slot side buffer)))
-    (let* ((window-params
+              (slot (or
+                     ;; A caller may name the slot, and one that does
+                     ;; means it: the buffer moves there even when a
+                     ;; window already shows it.  That is how a buffer
+                     ;; changes slot without anyone setting the buffer of
+                     ;; a window behind the back of this function.
+                     (cdr (assq 'slot alist))
+                     (auto-side-windows--get-next-free-slot side buffer))))
+    (let* ((wanted (cdr (assq 'slot alist)))
+           (window-params
             (append auto-side-windows-common-window-parameters
                     (auto-side-windows--side-option side 'parameters)))
            (side-alist
@@ -387,7 +395,7 @@ neither that hook nor a side to remember: the buffer went to no side."
                             (slot . ,slot)
                             (window-parameters . ,window-params)))))
       (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
-      (let ((window (or (get-buffer-window buffer nil)
+      (let ((window (or (and (not wanted) (get-buffer-window buffer nil))
                         (display-buffer-in-side-window buffer alist))))
         ;; The reused window may be an ordinary one.  Then the buffer
         ;; went to no side and must not claim one, and the hook must
@@ -435,18 +443,33 @@ on its side."
 
 (defun auto-side-windows--swap-slots (window other)
   "Show the buffer of WINDOW in OTHER and the buffer of OTHER in WINDOW.
-The windows keep their slots and their sizes; the buffers change place.
+Both go through `auto-side-windows--display-buffer\=', which names the
+slot each buffer is to take, so they arrive with the parameters and the
+action alist of their side and the display hooks run for them.
+
+The windows keep their slots and their sizes.  Neither keeps the buffer
+it had in its history: the two buffers changed place, and a side window
+that offers the buffer of its neighbour to `switch-to-prev-buffer\=' shows
+two buffers where the reader put one.
+
 Point follows the buffer, so the window that ends up with the buffer of
 WINDOW is selected."
-  (let ((mine (window-buffer window))
-        (theirs (window-buffer other))
-        (start (window-start window))
-        (point (window-point window)))
-    (set-window-buffer window theirs)
-    (set-window-buffer other mine)
-    (set-window-start other start)
-    (set-window-point other point)
-    (select-window other)))
+  (let* ((side (window-parameter window 'window-side))
+         (mine (window-buffer window))
+         (theirs (window-buffer other))
+         (my-slot (or (window-parameter window 'window-slot) 0))
+         (their-slot (or (window-parameter other 'window-slot) 0))
+         (start (window-start window))
+         (point (window-point window)))
+    (display-buffer mine `(nil . ((side . ,side) (slot . ,their-slot))))
+    (display-buffer theirs `(nil . ((side . ,side) (slot . ,my-slot))))
+    (dolist (win (list window other))
+      (set-window-prev-buffers win nil)
+      (set-window-next-buffers win nil))
+    (when-let* ((now (get-buffer-window mine)))
+      (set-window-start now start)
+      (set-window-point now point)
+      (select-window now))))
 
 ;;;###autoload
 (defun auto-side-windows-move-to-next-slot (&optional arg)
