@@ -207,6 +207,11 @@ Turn =auto-side-windows-mode= on and write your rules.  A buffer that
 matches a rule then opens in the side window of that rule.  A rule
 matches the name of the buffer or its major mode.
 
+The commands need the mode.  It puts one entry into
+=display-buffer-alist=, and that entry is what sends a buffer to a
+side; without the mode Emacs decides where a buffer goes, and
+=auto-side-windows-display-buffer-on-side= gives an ordinary window.
+
 ** Customization
 
 These options set the rules and the look of the side windows.  =M-x
