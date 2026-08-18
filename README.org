@@ -109,8 +109,8 @@ A small and complete setup.  The picture above shows it:
     (auto-side-windows-top-buffer-modes '(occur-mode))
     (auto-side-windows-bottom-buffer-modes '(eshell-mode shell-mode))
     ;; Reasonable sizes for the sides in use.
-    (auto-side-windows-right-alist '((window-width . 46)))
-    (auto-side-windows-bottom-alist '((window-height . 12)))
+    (auto-side-windows-right-width 46)
+    (auto-side-windows-bottom-height 12)
     :hook (after-init . auto-side-windows-mode))
 #+end_src
 
@@ -172,9 +172,11 @@ keybindings:
        helpful-mode
        shortdoc-mode))
 
-    ;; Example: Custom parameters for top windows (e.g., fit height to buffer)
-    ;; (auto-side-windows-top-alist '((window-height . fit-window-to-buffer)))
-    ;; (auto-side-windows-top-window-parameters '((mode-line-format . ...))) ;; Adjust mode-line
+    ;; Example: a top window that fits its buffer, and a mode line of
+    ;; its own
+    ;; (auto-side-windows-top-height (lambda (window)
+    ;;                                 (fit-window-to-buffer window 20 5)))
+    ;; (auto-side-windows-top-window-parameters '((mode-line-format . ...)))
 
     ;; Maximum number of side windows on the left, top, right and bottom
     (window-sides-slots '(1 1 1 1)) ; Example: Allow one window per side
