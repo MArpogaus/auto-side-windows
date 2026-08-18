@@ -413,6 +413,66 @@ function returns the candidate name."
       (format "%s" side))))
 
 ;;;; Commands
+(defun auto-side-windows--side-windows (side)
+  "Return the windows on SIDE of this frame, in the order of their slots.
+A window without a slot counts as slot zero, which is what
+`display-buffer-in-side-window\=' does with one."
+  (sort (seq-filter (lambda (window)
+                      (eq (window-parameter window 'window-side) side))
+                    (window-list))
+        :key (lambda (window) (or (window-parameter window 'window-slot) 0))))
+
+(defun auto-side-windows--slot-neighbour (window step)
+  "Return the window STEP slots away from WINDOW on its side.
+The slots that exist are the only ones there are, so the last one leads
+back to the first.  Nil when WINDOW is no side window, or the only one
+on its side."
+  (when-let* ((side (window-parameter window 'window-side))
+              (windows (auto-side-windows--side-windows side))
+              ((> (length windows) 1))
+              (at (seq-position windows window)))
+    (nth (mod (+ at step) (length windows)) windows)))
+
+(defun auto-side-windows--swap-slots (window other)
+  "Show the buffer of WINDOW in OTHER and the buffer of OTHER in WINDOW.
+The windows keep their slots and their sizes; the buffers change place.
+Point follows the buffer, so the window that ends up with the buffer of
+WINDOW is selected."
+  (let ((mine (window-buffer window))
+        (theirs (window-buffer other))
+        (start (window-start window))
+        (point (window-point window)))
+    (set-window-buffer window theirs)
+    (set-window-buffer other mine)
+    (set-window-start other start)
+    (set-window-point other point)
+    (select-window other)))
+
+;;;###autoload
+(defun auto-side-windows-move-to-next-slot (&optional arg)
+  "Move the buffer of the side window at point ARG slots along its side.
+The buffer of the slot it moves to comes back the other way, so no slot
+is made and none is left empty: a side with slots zero and three swaps
+the two buffers.  ARG is one by default, and a negative ARG moves the
+other way.
+
+Point follows the buffer."
+  (interactive "p")
+  (let ((window (selected-window)))
+    (unless (window-parameter window 'window-side)
+      (user-error "Not in a side window"))
+    (let ((other (auto-side-windows--slot-neighbour window (or arg 1))))
+      (unless other
+        (user-error "No other slot on this side"))
+      (auto-side-windows--swap-slots window other))))
+
+;;;###autoload
+(defun auto-side-windows-move-to-previous-slot (&optional arg)
+  "Move the buffer of the side window at point ARG slots back along its side.
+See `auto-side-windows-move-to-next-slot\='."
+  (interactive "p")
+  (auto-side-windows-move-to-next-slot (- (or arg 1))))
+
 ;;;###autoload
 (defun auto-side-windows-toggle-side-window ()
   "Toggle the current buffer as a side window.
