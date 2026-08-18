@@ -110,15 +110,20 @@ guard against."
 (ert-deftest auto-side-windows-test-display-on-side-outside-side-window ()
   "Displaying on a side works from a normal window.
 The command used to reference an unbound variable on this path."
-  (with-temp-buffer
-    (let* ((display-buffer-alist nil)
-           (buffer (current-buffer))
-           (window (progn (auto-side-windows-display-buffer-on-side 'right)
-                          (get-buffer-window buffer))))
-      (should (windowp window))
-      ;; and it is a side window, on the side that was asked for
-      (should (eq (window-parameter window 'window-side) 'right))
-      (should (eq (window-buffer window) buffer)))))
+  ;; With the mode, as the package is used: it puts one entry into
+  ;; `display-buffer-alist', and that entry is what reads the side out
+  ;; of the action alist.  Without the mode, Emacs decides where the
+  ;; buffer goes and the side is nobody's business.
+  (auto-side-windows-mode 1)
+  (unwind-protect
+      (with-temp-buffer
+        (let* ((buffer (current-buffer))
+               (window (progn (auto-side-windows-display-buffer-on-side 'right)
+                              (get-buffer-window buffer))))
+          (should (windowp window))
+          (should (eq (window-parameter window 'window-side) 'right))
+          (should (eq (window-buffer window) buffer))))
+    (auto-side-windows-mode -1)))
 
 (ert-deftest auto-side-windows-test-reused-plain-window-claims-no-side ()
   "A buffer already on screen in an ordinary window stays ordinary.
