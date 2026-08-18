@@ -91,6 +91,41 @@ claim one:
 The hook is there to dress a side window, and an ordinary window is
 not one.
 
+* The geometry of a side
+
+The size of a side window is given when the window is made, from the
+action alist that `display-buffer-in-side-window' receives.  Nothing
+keeps it afterwards, so a window that goes and comes back is made with
+the configured size again.  Measured before this section existed: a
+hand resized left side of 29 columns with slots of 22 and 13 lines came
+back as 17 and 17 after its slot was deleted and displayed again.
+
+Three parts hold it now.
+
+=auto-side-windows--geometry= and its setter keep an alist of
+=(SIDE SIZE COUNT SLOTS)= in the current tab, or in the frame where
+there are no tabs.  A tab is where Emacs keeps a window configuration,
+so the sizes of a layout belong to the tab that shows it: each tab keeps
+its own, a new tab has none and starts from the options, and a tab that
+closes takes its sizes with it.  No key is needed and nothing has to be
+cleaned up, because the record is a key in the alist of the tab itself.
+
+=auto-side-windows--measure= runs from
+=window-size-change-functions=.  It measures a side only while the side
+has as many windows as it had when it was measured last.  A window that
+goes gives its lines to a sister, and measuring then would keep a size
+nobody asked for; a reader who resizes a window changes no count.  The
+commands that delete a side window measure first, because a redisplay
+may not have happened since the reader resized.
+
+=auto-side-windows--sizes= turns a record into the two entries of an
+action alist: the size of the side, a width for a left or a right side
+and a height for a top or a bottom one, and the size of the slot across
+it.  =auto-side-windows--display-buffer= puts them in front of the
+action alist, so Emacs applies them when it makes the window, and drops
+the =window-width= and the =window-height= of the side's own alist:
+one option answers for the size of a side.
+
 * Moving a buffer along a side
 
 =auto-side-windows-move-to-next-slot= and its twin take the buffer of
@@ -161,6 +196,10 @@ entry that asks its own questions.
 - the drag, and that it does nothing across two sides, into an ordinary
   window, or where it began
 - that the package binds no key
+- the measurement, and that a window which goes leaves the sizes alone
+- which action alist entries a record turns into, for a side and a slot
+- that the switch forgets both the measuring and the giving back
+- that the size of a side comes from its option and not from its alist
 
 A batch session has a frame and windows, so the side windows and
 their parameters are testable without a display.

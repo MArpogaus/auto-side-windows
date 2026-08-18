@@ -223,7 +223,10 @@ customize-group RET auto-side-windows RET= shows them all:
 | =auto-side-windows-{top,bottom,left,right}-buffer-modes=      | list (symbol) | the major modes of that side                          |
 | =auto-side-windows-{top,bottom,left,right}-extra-conditions=  | list (sexp)   | more conditions of that side, as =buffer-match-p= takes them |
 | =auto-side-windows-{top,bottom,left,right}-window-parameters= | alist         | the window parameters of that side                    |
-| =auto-side-windows-{top,bottom,left,right}-alist=             | alist         | the action alist of that side, for example =window-height= |
+| =auto-side-windows-{top,bottom}-height=                       | number, function | how tall that side starts                          |
+| =auto-side-windows-{left,right}-width=                        | number, function | how wide that side starts                          |
+| =auto-side-windows-remember-sizes=                            | boolean       | whether a side keeps the size you give it            |
+| =auto-side-windows-{top,bottom,left,right}-alist=             | alist         | the action alist of that side, the size aside        |
 | =auto-side-windows-common-window-parameters=                  | alist         | the window parameters of each side window             |
 | =auto-side-windows-common-alist=                              | alist         | the action alist of each side window                  |
 | =auto-side-windows-reuse-mode-window=                         | alist         | the sides that reuse a window with the same major mode |
@@ -244,6 +247,38 @@ customize-group RET auto-side-windows RET= shows them all:
 
 =auto-side-windows-switch-to-buffer= needs
 =switch-to-buffer-obey-display-actions= at a value other than nil.
+
+** The size of a side
+
+The size a side starts with is its own option: a number, or a function
+of one window as a =window-height= in an action alist takes one.
+
+#+begin_src emacs-lisp
+  (setq auto-side-windows-left-width 40
+        auto-side-windows-right-width 80
+        auto-side-windows-bottom-height 12
+        ;; a top window that fits its buffer, between five and twenty lines
+        auto-side-windows-top-height (lambda (window)
+                                       (fit-window-to-buffer window 20 5)))
+#+end_src
+
+One option answers for the size, so a =window-width= or a
+=window-height= in the action alist of a side is dropped.  The rest of
+the alist applies as before.
+
+With =auto-side-windows-remember-sizes= at its default of t, a side
+window you resize keeps its size: the side and each of its slots are
+measured, and a buffer displayed there later gets the size back.  A
+toggle, a killed buffer and a move from slot to slot therefore leave the
+layout as you set it.
+
+The sizes belong to the tab they were measured in, so each tab keeps its
+own; without tabs they belong to the frame.  A new tab starts from the
+options above, a tab you close forgets its sizes, and nothing is kept
+across sessions.  Nil forgets them altogether, and every side window is
+made with the size its option names.
+
+** Moving a buffer between slots
 
 The move commands work with the slots that are there and make none.
 They swap two buffers: with a buffer in slot zero and another in slot
