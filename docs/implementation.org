@@ -38,12 +38,14 @@ order:
 4. Do the rules of a side match?  The package tries top, bottom, left
    and right, in this order.
 
-The rules of a side are the buffer names, the major modes and the
-extra conditions of that side.
-=auto-side-windows--buffer-match-condition= puts them into one
-condition for =buffer-match-p=.  Each condition that
-=buffer-match-p= takes also works in the extra conditions: a regular
-expression, a cons cell such as =(category . comint)=, or a function.
+The rules of a side are the buffer names, the major modes and the extra
+conditions of that side.  =auto-side-windows--side-condition= reads them
+from the option table and puts them into one condition for
+=buffer-match-p=: =(or NAME... (derived-mode . MODE)... EXTRA...)=.  Each
+condition that =buffer-match-p= takes also works in the extra
+conditions: a regular expression, a cons cell such as =(category
+. comint)=, or a function.  A side nobody wrote a rule for makes =(or)=,
+which matches nothing.
 
 * The slot
 
@@ -68,6 +70,11 @@ reuse of a window that shows the buffer already, because a caller who
 names a slot means that slot.  That is how a buffer changes slot without
 anyone setting the buffer of a window: see moving a buffer along a side.
 
+The search counts up from zero and never returns a negative slot, so a
+caller that asks for one keeps it: =dirvish-side= displays itself in slot
+-1, and no buffer of ours can land there.  A buffer that needs a slot of
+its own therefore needs no bookkeeping in this package.
+
 * The display
 
 =auto-side-windows--display-buffer= puts three things together:
@@ -76,9 +83,11 @@ anyone setting the buffer of a window: see moving a buffer along a side.
 - the action alist: the common one and the one of the side
 - the side and the slot
 
-=auto-side-windows--side-options= names the options of each side.
-The names are written out.  The compiler therefore reads them, and a
-search finds them.
+=auto-side-windows--side-options= names every option of a side: its
+window parameters, its action alist, its size, and the three rules that
+send a buffer to it.  =auto-side-windows--side-option= reads one part of
+one side from it.  The names are written out.  The compiler therefore
+reads them, and a search finds them.
 
 The function then calls =display-buffer-in-side-window=, or it reuses
 the window that shows the buffer already.  A reused window can be an
@@ -128,9 +137,13 @@ may not have happened since the reader resized.
 action alist: the size of the side, a width for a left or a right side
 and a height for a top or a bottom one, and the size of the slot across
 it.  =auto-side-windows--display-buffer= puts them in front of the
-action alist, so Emacs applies them when it makes the window, and drops
-the =window-width= and the =window-height= of the side's own alist:
-one option answers for the size of a side.
+action alist, so Emacs applies them when it makes the window.
+
+The order of that alist is the order of the say, because
+=display-buffer-in-side-window= reads the first entry it finds: what the
+reader last resized comes first, then the size option of the side, then
+the action alist of the side.  Nothing is taken out of the alist of a
+side; a size left in it applies where the option is empty.
 
 * Moving a buffer along a side
 
@@ -182,8 +195,9 @@ parameters of a window that has =window-side=.
 
 =auto-side-windows--display-buffer= runs for each buffer that Emacs
 displays, because the condition of its entry is =t=.  A buffer that
-matches no rule costs about 43 microseconds.  This is the price of one
-entry that asks its own questions.
+matches no rule costs 50 to 60 microseconds, measured over 20000 calls
+in a batch session with rules on all four sides.  This is the price of
+one entry that asks its own questions.
 
 * The tests
 
@@ -205,7 +219,7 @@ entry that asks its own questions.
 - the measurement, and that a window which goes leaves the sizes alone
 - which action alist entries a record turns into, for a side and a slot
 - that the switch forgets both the measuring and the giving back
-- that the size of a side comes from its option and not from its alist
+- that the size of a side comes from its option before its alist
 
 A batch session has a frame and windows, so the side windows and
 their parameters are testable without a display.

@@ -40,14 +40,24 @@ RULES is a plist of customization symbols and values."
            (nreverse binds))
      ,@body))
 
-(ert-deftest auto-side-windows-test-match-condition ()
-  "The buffer match condition covers modes, names and extra conditions."
-  (should (equal (auto-side-windows--buffer-match-condition '(help-mode))
-                 '(or (derived-mode . help-mode))))
-  (should (equal (auto-side-windows--buffer-match-condition '(help-mode) '("^\\*foo\\*$"))
-                 '(or (or "^\\*foo\\*$") (or (derived-mode . help-mode)))))
-  (should (equal (auto-side-windows--buffer-match-condition nil nil '((major-mode . text-mode)))
-                 '(or (major-mode . text-mode)))))
+(ert-deftest auto-side-windows-test-side-condition ()
+  "The condition of a side covers its names, its modes and its extras."
+  (auto-side-windows-test--with-rules
+      (auto-side-windows-right-buffer-modes '(help-mode)
+       auto-side-windows-right-buffer-names '("^\\*foo\\*$")
+       auto-side-windows-right-extra-conditions '((major-mode . text-mode)))
+    (should (equal (auto-side-windows--side-condition 'right)
+                   '(or "^\\*foo\\*$"
+                        (derived-mode . help-mode)
+                        (major-mode . text-mode)))))
+  ;; a side nobody wrote a rule for matches nothing
+  (auto-side-windows-test--with-rules
+      (auto-side-windows-left-buffer-modes nil
+       auto-side-windows-left-buffer-names nil
+       auto-side-windows-left-extra-conditions nil)
+    (should (equal (auto-side-windows--side-condition 'left) '(or)))
+    (should-not (buffer-match-p (auto-side-windows--side-condition 'left)
+                                (current-buffer)))))
 
 (ert-deftest auto-side-windows-test-side-by-name ()
   "A buffer whose name matches a rule goes to that side."
@@ -160,20 +170,22 @@ it is there to dress a side window."
       (delete-other-windows))))
 
 (ert-deftest auto-side-windows-test-side-options-cover-each-side ()
-  "Each side has its window parameters and its action alist.
+  "Every side names an option for every part it has.
 The names are written out, so a side that gains an option and forgets
 the table is a test failure and not a nil at display time."
   (dolist (side '(top bottom left right))
-    (let ((auto-side-windows-top-alist '((window-height . 7)))
-          (auto-side-windows-top-window-parameters '((no-other-window . t))))
-      (should (assq side auto-side-windows--side-options))
-      (should (boundp (nth 1 (assq side auto-side-windows--side-options))))
-      (should (boundp (nth 2 (assq side auto-side-windows--side-options))))
-      (when (eq side 'top)
-        (should (equal (auto-side-windows--side-option side 'alist)
-                       '((window-height . 7))))
-        (should (equal (auto-side-windows--side-option side 'parameters)
-                       '((no-other-window . t))))))))
+    (let ((parts (alist-get side auto-side-windows--side-options)))
+      (should parts)
+      (dolist (part '(parameters alist size modes names conditions))
+        (should (boundp (plist-get parts part))))))
+  (let ((auto-side-windows-top-alist '((dedicated . t)))
+        (auto-side-windows-top-window-parameters '((no-other-window . t)))
+        (auto-side-windows-top-height 7))
+    (should (equal (auto-side-windows--side-option 'top 'alist)
+                   '((dedicated . t))))
+    (should (equal (auto-side-windows--side-option 'top 'parameters)
+                   '((no-other-window . t))))
+    (should (= (auto-side-windows--side-option 'top 'size) 7))))
 
 (defmacro auto-side-windows-test--with-sides (&rest body)
   "Run BODY with the mode on and two buffers, `a\=' and `b\='.
@@ -374,9 +386,9 @@ a height, and each of its slots a width."
       (should-not (auto-side-windows--sizes 'left 0)))))
 
 (ert-deftest auto-side-windows-test-a-size-comes-from-its-option ()
-  "The size of a side comes from its option, and a size in its alist goes.
-One option answers for the size, so a `window-width\=' left in the action
-alist of a side is dropped."
+  "The size of a side comes from its option, before its action alist.
+Both may name a size, and the option is the one that answers: it comes
+first in the action alist the display function builds."
   (auto-side-windows-test--with-sides
     (let ((auto-side-windows-remember-sizes nil)
           (auto-side-windows-left-width 30)
