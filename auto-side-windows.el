@@ -430,8 +430,8 @@ in that variable means no limit."
 ;; A tab that has none starts from the size of its side, and a closed tab
 ;; takes its sizes with it.
 
-(defun auto-side-windows--geometry ()
-  "Return the geometry of the current tab.
+(defun auto-side-windows--geometry (&optional frame)
+  "Return the geometry of the current tab of FRAME, or of the selected one.
 The value is an alist of (SIDE SIZE COUNT SLOTS), where SIZE is the
 width of a left or a right side and the height of a top or a bottom one,
 COUNT is how many windows the side had when it was measured, and SLOTS
@@ -439,13 +439,14 @@ is an alist of slot number to the size across the side.
 
 There is a current tab whether or not `tab-bar-mode\=' is on, because
 `tab-bar-tabs\=' makes one; a frame without tabs therefore keeps its
-sizes in the tab it does not show."
+sizes in the tab it does not show.  Each frame has its own tabs, so each
+frame has its own sizes."
   (alist-get 'auto-side-windows-geometry
-             (cdr (assq 'current-tab (funcall tab-bar-tabs-function)))))
+             (cdr (assq 'current-tab (funcall tab-bar-tabs-function frame)))))
 
-(defun auto-side-windows--set-geometry (value)
-  "Write VALUE as the geometry of the current tab."
-  (when-let* ((tab (assq 'current-tab (funcall tab-bar-tabs-function))))
+(defun auto-side-windows--set-geometry (value &optional frame)
+  "Write VALUE as the geometry of the current tab of FRAME."
+  (when-let* ((tab (assq 'current-tab (funcall tab-bar-tabs-function frame))))
     (setf (alist-get 'auto-side-windows-geometry (cdr tab)) value)))
 
 (defun auto-side-windows--across-p (side)
@@ -459,16 +460,21 @@ other way round."
   "Return the width of WINDOW when ACROSS, else its height."
   (if across (window-total-width window) (window-total-height window)))
 
-(defun auto-side-windows--measure (_frame)
-  "Measure the sides of the selected frame, for `window-size-change-functions'.
+(defun auto-side-windows--measure (frame)
+  "Measure the sides of FRAME, for `window-size-change-functions'.
+FRAME is the frame whose windows changed, which is not always the
+selected one: a size change on another frame would otherwise be written
+against the tab of this one, and the frame that changed would keep
+nothing.  Nil means the selected frame, as the commands here call it.
+
 A side is measured only while it has as many windows as it had when it
 was measured last.  A window that goes gives its lines to a sister, and
 measuring then would keep a size nobody asked for; a reader who resizes
 a window changes no count."
   (when auto-side-windows-remember-sizes
-    (let ((geometry (auto-side-windows--geometry)))
+    (let ((geometry (auto-side-windows--geometry frame)))
       (dolist (side '(top bottom left right))
-        (when-let* ((windows (auto-side-windows--side-windows side)))
+        (when-let* ((windows (auto-side-windows--side-windows side frame)))
           (let* ((across (auto-side-windows--across-p side))
                  (now (length windows))
                  (entry (alist-get side geometry))
@@ -486,7 +492,7 @@ a window changes no count."
                                          (auto-side-windows--window-size
                                           window (not across))))
                                  windows))))))))
-      (auto-side-windows--set-geometry geometry))))
+      (auto-side-windows--set-geometry geometry frame))))
 
 (defun auto-side-windows--sizes (side slot)
   "Return the action alist that gives SIDE and SLOT the size they had.
@@ -581,11 +587,12 @@ A window without one counts as slot zero, which is what
 `display-buffer-in-side-window\=' does with it."
   (or (window-parameter window 'window-slot) 0))
 
-(defun auto-side-windows--side-windows (side)
-  "Return the windows on SIDE of this frame, in the order of their slots."
+(defun auto-side-windows--side-windows (side &optional frame)
+  "Return the windows on SIDE of FRAME, in the order of their slots.
+FRAME is the selected frame by default."
   (sort (seq-filter (lambda (window)
                       (eq (window-parameter window 'window-side) side))
-                    (window-list))
+                    (window-list frame))
         :key #'auto-side-windows--slot))
 
 (defun auto-side-windows--slot-neighbour (window step)
