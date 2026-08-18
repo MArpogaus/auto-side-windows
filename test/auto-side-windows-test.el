@@ -376,6 +376,22 @@ a height, and each of its slots a width."
       ;; and a side nobody measured has nothing to say
       (should-not (auto-side-windows--sizes 'bottom 0)))))
 
+(ert-deftest auto-side-windows-test-measure-takes-the-frame-it-is-given ()
+  "The frame `window-size-change-functions\=' names is the frame measured.
+A size change on a frame that is not selected would otherwise be written
+against the tab of the selected one, and the frame that changed would
+give nothing back."
+  (let ((auto-side-windows-remember-sizes t)
+        (tab-bar-tabs-function nil)
+        frames tabs)
+    (setq tab-bar-tabs-function
+          (lambda (&optional frame) (push frame tabs) (list (list 'current-tab))))
+    (cl-letf (((symbol-function 'window-list)
+               (lambda (&optional frame &rest _) (push frame frames) nil)))
+      (auto-side-windows--measure 'a-frame))
+    (should (equal (delete-dups frames) '(a-frame)))
+    (should (equal (delete-dups tabs) '(a-frame)))))
+
 (ert-deftest auto-side-windows-test-the-switch-forgets ()
   "With `auto-side-windows-remember-sizes\=' nil nothing is kept or given back."
   (auto-side-windows-test--with-sides
