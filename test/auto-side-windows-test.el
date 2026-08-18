@@ -175,5 +175,79 @@ the table is a test failure and not a nil at display time."
         (should (equal (auto-side-windows--side-option side 'parameters)
                        '((no-other-window . t))))))))
 
+(defun auto-side-windows-test--side-window (buffer side slot)
+  "Show BUFFER in a side window on SIDE in SLOT, and return the window."
+  (display-buffer-in-side-window buffer `((side . ,side) (slot . ,slot))))
+
+(defun auto-side-windows-test--clear-sides ()
+  "Delete the side windows of the frame.
+`delete-other-windows\=' cannot do it: a side window may not be the only
+window of a frame."
+  (dolist (window (window-list))
+    (when (window-parameter window 'window-side)
+      (delete-window window))))
+
+(ert-deftest auto-side-windows-test-slot-neighbour-wraps ()
+  "The slots that exist are the only ones, and the last leads to the first.
+A side with slots zero and three has two windows, so one step from
+either lands on the other."
+  (let ((a (get-buffer-create "*slot a*"))
+        (b (get-buffer-create "*slot b*")))
+    (unwind-protect
+        (let ((one (auto-side-windows-test--side-window a 'left 0))
+              (three (auto-side-windows-test--side-window b 'left 3)))
+          (should (equal (auto-side-windows--side-windows 'left) (list one three)))
+          (should (eq (auto-side-windows--slot-neighbour one 1) three))
+          (should (eq (auto-side-windows--slot-neighbour three 1) one))
+          (should (eq (auto-side-windows--slot-neighbour one -1) three))
+          ;; and a window that stands alone on its side has no neighbour
+          (delete-window three)
+          (should-not (auto-side-windows--slot-neighbour one 1)))
+      (auto-side-windows-test--clear-sides)
+      (kill-buffer a)
+      (kill-buffer b))))
+
+(ert-deftest auto-side-windows-test-move-to-next-slot-swaps ()
+  "Moving a buffer along the side brings the other buffer back the other way.
+Slot zero holds A and slot three holds B; after the move slot three
+holds A and slot zero holds B, and no slot was made or left empty."
+  (let ((a (get-buffer-create "*slot a*"))
+        (b (get-buffer-create "*slot b*")))
+    (unwind-protect
+        (let ((one (auto-side-windows-test--side-window a 'left 0))
+              (three (auto-side-windows-test--side-window b 'left 3)))
+          (select-window one)
+          (auto-side-windows-move-to-next-slot)
+          (should (eq (window-buffer three) a))
+          (should (eq (window-buffer one) b))
+          ;; the same two windows, with the same slots
+          (should (equal (auto-side-windows--side-windows 'left) (list one three)))
+          (should (= (window-parameter one 'window-slot) 0))
+          (should (= (window-parameter three 'window-slot) 3))
+          ;; point followed the buffer
+          (should (eq (selected-window) three))
+          ;; and back
+          (auto-side-windows-move-to-previous-slot)
+          (should (eq (window-buffer one) a))
+          (should (eq (window-buffer three) b))
+          (should (eq (selected-window) one)))
+      (auto-side-windows-test--clear-sides)
+      (kill-buffer a)
+      (kill-buffer b))))
+
+(ert-deftest auto-side-windows-test-move-needs-a-side-window ()
+  "The command says so where there is no side window to move."
+  (save-window-excursion
+    (delete-other-windows)
+    (should-error (auto-side-windows-move-to-next-slot) :type 'user-error))
+  ;; and where the side has one slot only
+  (let ((a (get-buffer-create "*slot a*")))
+    (unwind-protect
+        (progn
+          (select-window (auto-side-windows-test--side-window a 'left 0))
+          (should-error (auto-side-windows-move-to-next-slot) :type 'user-error))
+      (auto-side-windows-test--clear-sides)
+      (kill-buffer a))))
+
 (provide 'auto-side-windows-test)
 ;;; auto-side-windows-test.el ends here

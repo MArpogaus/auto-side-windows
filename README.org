@@ -239,9 +239,17 @@ customize-group RET auto-side-windows RET= shows them all:
 | =auto-side-windows-display-buffer-{top,bottom,left,right}= | show the buffer on that side, whatever the rules say |
 | =auto-side-windows-display-buffer-on-side=            | the same, and ask for the side in the minibuffer    |
 | =auto-side-windows-switch-to-buffer=                  | switch to a buffer that is in a side window         |
+| =auto-side-windows-move-to-{next,previous}-slot=       | move the buffer along its side, slot for slot       |
 
 =auto-side-windows-switch-to-buffer= needs
 =switch-to-buffer-obey-display-actions= at a value other than nil.
+
+The move commands work with the slots that are there and make none.
+They swap two buffers: with a buffer in slot zero and another in slot
+three, one step takes the first to slot three and brings the second to
+slot zero.  The slots and the sizes of the windows stay as they are,
+and point follows the buffer, so a repeated key keeps moving the same
+one.  The package binds no key for them; bind what you like.
 The rules of this package are display actions.
 
 ** Integration with Other Packages
