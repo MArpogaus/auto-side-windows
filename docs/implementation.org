@@ -38,12 +38,14 @@ order:
 4. Do the rules of a side match?  The package tries top, bottom, left
    and right, in this order.
 
-The rules of a side are the buffer names, the major modes and the
-extra conditions of that side.
-=auto-side-windows--buffer-match-condition= puts them into one
-condition for =buffer-match-p=.  Each condition that
-=buffer-match-p= takes also works in the extra conditions: a regular
-expression, a cons cell such as =(category . comint)=, or a function.
+The rules of a side are the buffer names, the major modes and the extra
+conditions of that side.  =auto-side-windows--side-condition= reads them
+from the option table and puts them into one condition for
+=buffer-match-p=: =(or NAME... (derived-mode . MODE)... EXTRA...)=.  Each
+condition that =buffer-match-p= takes also works in the extra
+conditions: a regular expression, a cons cell such as =(category
+. comint)=, or a function.  A side nobody wrote a rule for makes =(or)=,
+which matches nothing.
 
 * The slot
 
@@ -62,6 +64,17 @@ window that it can reuse:
 The function returns the highest allowed slot if each slot is in use.
 The new buffer then replaces the buffer in that window.
 
+A caller can name the slot instead, with a =slot= in the action alist.
+=auto-side-windows--display-buffer= then takes that number and skips the
+reuse of a window that shows the buffer already, because a caller who
+names a slot means that slot.  That is how a buffer changes slot without
+anyone setting the buffer of a window: see moving a buffer along a side.
+
+The search counts up from zero and never returns a negative slot, so a
+caller that asks for one keeps it: =dirvish-side= displays itself in slot
+-1, and no buffer of ours can land there.  A buffer that needs a slot of
+its own therefore needs no bookkeeping in this package.
+
 * The display
 
 =auto-side-windows--display-buffer= puts three things together:
@@ -70,9 +83,11 @@ The new buffer then replaces the buffer in that window.
 - the action alist: the common one and the one of the side
 - the side and the slot
 
-=auto-side-windows--side-options= names the options of each side.
-The names are written out.  The compiler therefore reads them, and a
-search finds them.
+=auto-side-windows--side-options= names every option of a side: its
+window parameters, its action alist, its size, and the three rules that
+send a buffer to it.  =auto-side-windows--side-option= reads one part of
+one side from it.  The names are written out.  The compiler therefore
+reads them, and a search finds them.
 
 The function then calls =display-buffer-in-side-window=, or it reuses
 the window that shows the buffer already.  A reused window can be an
@@ -84,6 +99,90 @@ claim one:
 
 The hook is there to dress a side window, and an ordinary window is
 not one.
+
+* The geometry of a side
+
+The size of a side window is given when the window is made, from the
+action alist that `display-buffer-in-side-window' receives.  Nothing
+keeps it afterwards, so a window that goes and comes back is made with
+the configured size again.  Measured before this section existed: a
+hand resized left side of 29 columns with slots of 22 and 13 lines came
+back as 17 and 17 after its slot was deleted and displayed again.
+
+Three parts hold it now.
+
+=auto-side-windows--geometry= and its setter keep an alist of
+=(SIDE SIZE COUNT SLOTS)= in the current tab.  A tab is where Emacs
+keeps a window configuration, so the sizes of a layout belong to the tab
+that shows it: each tab keeps its own, a new tab has none and starts from
+the options, and a tab that closes takes its sizes with it.  No key is
+needed and nothing has to be cleaned up, because the record is a key in
+the alist of the tab itself.
+
+There is a current tab whether or not =tab-bar-mode= is on: measured,
+=tab-bar-tabs= answers =((current-tab (name . "*scratch*") ...))= in a
+frame that never showed a tab bar, and it puts that list into the frame.
+A frame without tabs therefore keeps its sizes in the tab it does not
+show, and the package needs no second place to put them.
+
+=auto-side-windows--measure= runs from
+=window-size-change-functions=, which names the frame whose windows
+changed.  That frame is the one measured, and not the selected one: a
+side window resized on a second frame would otherwise be written against
+the tab of the frame in front.  Measured with the old code, a top window
+of 22 lines on the frame that was not selected left an empty record and
+came back at the 10 lines of its option.
+
+It measures a side only while the side
+has as many windows as it had when it was measured last.  A window that
+goes gives its lines to a sister, and measuring then would keep a size
+nobody asked for; a reader who resizes a window changes no count.  The
+commands that delete a side window measure first, because a redisplay
+may not have happened since the reader resized.
+
+=auto-side-windows--sizes= turns a record into the two entries of an
+action alist: the size of the side, a width for a left or a right side
+and a height for a top or a bottom one, and the size of the slot across
+it.  =auto-side-windows--display-buffer= puts them in front of the
+action alist, so Emacs applies them when it makes the window.
+
+The order of that alist is the order of the say, because
+=display-buffer-in-side-window= reads the first entry it finds: what the
+reader last resized comes first, then the size option of the side, then
+the action alist of the side.  Nothing is taken out of the alist of a
+side; a size left in it applies where the option is empty.
+
+* Moving a buffer along a side
+
+=auto-side-windows-move-to-next-slot= and its twin take the buffer of
+the side window at point to another slot of that side.  The slots that
+exist are the only ones there are, so the buffer of the slot it moves to
+comes back the other way and no slot is made or left empty.  The last
+slot leads back to the first.
+
+The swap deletes the two windows and displays both buffers again, each
+with the slot of the other in its action alist.  Three things follow:
+
+- Each buffer arrives through the display path, with the parameters and
+  the action alist of its side and with the hooks run for it.
+- Each window is a new one.  Emacs clears the buffer history of a window
+  it makes, and a side window that offers the buffer of its neighbour to
+  =switch-to-prev-buffer= shows two buffers where the reader put one.
+- The sizes come from the side again, so they are measured before the
+  windows go and given back to the slots afterwards.  A side window a
+  reader made taller stays the taller one, whichever buffer moves into
+  it.
+
+=auto-side-windows-drag-slot= does the same from the mouse.  Emacs binds
+a press on a header line to =mouse-drag-header-line=, which resizes the
+window and lets no =drag-mouse-1= out, so the command takes the press
+and follows the mouse itself.  It asks whether the press began in a side
+window before it follows anything: a press this command does not answer
+belongs to whoever else wants it.
+
+The package binds no key, this one included.  A keymap on the header
+line of a side window takes the press before Emacs does; the README
+shows it.
 
 * The toggle
 
@@ -103,8 +202,9 @@ parameters of a window that has =window-side=.
 
 =auto-side-windows--display-buffer= runs for each buffer that Emacs
 displays, because the condition of its entry is =t=.  A buffer that
-matches no rule costs about 43 microseconds.  This is the price of one
-entry that asks its own questions.
+matches no rule costs 50 to 60 microseconds, measured over 20000 calls
+in a batch session with rules on all four sides.  This is the price of
+one entry that asks its own questions.
 
 * The tests
 
@@ -117,6 +217,17 @@ entry that asks its own questions.
 - the options of each side
 - the toggle, in both directions
 - the entry in =display-buffer-alist=, after the mode goes on and off
+- the neighbour of a slot, and that the last leads back to the first
+- the swap: which buffer is in which slot, that the windows are two and
+  keep their sizes, and that neither offers the buffer of the other
+- the drag, and that it does nothing across two sides, into an ordinary
+  window, or where it began
+- that the package binds no key
+- the measurement, that a window which goes leaves the sizes alone, and
+  that the frame it is given is the frame it reads
+- which action alist entries a record turns into, for a side and a slot
+- that the switch forgets both the measuring and the giving back
+- that the size of a side comes from its option before its alist
 
 A batch session has a frame and windows, so the side windows and
 their parameters are testable without a display.
