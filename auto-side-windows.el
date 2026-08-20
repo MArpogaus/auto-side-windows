@@ -284,7 +284,7 @@ that side, which wins over a size here."
 (defcustom auto-side-windows-reuse-mode-window nil
   "Allow reuse of side windows for same mode on given sides.
 If set, side windows may be reused for buffers of the same major mode.
-An entry names a side, as in '((right . t))."
+An entry names a side, as in \\='((right . t))."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -381,9 +381,9 @@ of the kind `buffer-match-p' takes."
 
 (defun auto-side-windows--get-buffer-side (buffer &optional alist)
   "Return the side BUFFER goes to: top, bottom, left, right or detached.
-Nil where no rule matches, which leaves the buffer to Emacs.  A `side\'
+Nil where no rule matches, which leaves the buffer to Emacs.  A `side'
 in ALIST answers before the rules do, and ALIST is also passed to
-`buffer-match-p\' for the conditions that ask for it."
+`buffer-match-p' for the conditions that ask for it."
   (with-current-buffer buffer
     (cond
      (auto-side-windows--detached 'detached)
@@ -791,7 +791,7 @@ The package binds no key.  Put this on the header line of your side
 windows, where a press is yours to give away:
 
     (keymap-set my-header-line-map \"<down-mouse-1>\"
-                #'auto-side-windows-drag-slot)"
+                #\\='auto-side-windows-drag-slot)"
   (interactive "e")
   ;; The side of the window it starts in is asked first: a press this
   ;; command does not answer belongs to whoever else wants it, and
