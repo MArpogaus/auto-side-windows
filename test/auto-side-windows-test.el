@@ -44,8 +44,8 @@ RULES is a plist of customization symbols and values."
   "The condition of a side covers its names, its modes and its extras."
   (auto-side-windows-test--with-rules
       (auto-side-windows-right-buffer-modes '(help-mode)
-       auto-side-windows-right-buffer-names '("^\\*foo\\*$")
-       auto-side-windows-right-extra-conditions '((major-mode . text-mode)))
+                                            auto-side-windows-right-buffer-names '("^\\*foo\\*$")
+                                            auto-side-windows-right-extra-conditions '((major-mode . text-mode)))
     (should (equal (auto-side-windows--side-condition 'right)
                    '(or "^\\*foo\\*$"
                         (derived-mode . help-mode)
@@ -53,8 +53,8 @@ RULES is a plist of customization symbols and values."
   ;; a side nobody wrote a rule for matches nothing
   (auto-side-windows-test--with-rules
       (auto-side-windows-left-buffer-modes nil
-       auto-side-windows-left-buffer-names nil
-       auto-side-windows-left-extra-conditions nil)
+                                           auto-side-windows-left-buffer-names nil
+                                           auto-side-windows-left-extra-conditions nil)
     (should (equal (auto-side-windows--side-condition 'left) '(or)))
     (should-not (buffer-match-p (auto-side-windows--side-condition 'left)
                                 (current-buffer)))))
@@ -65,7 +65,7 @@ RULES is a plist of customization symbols and values."
     (rename-buffer "*side-test-name*" t)
     (auto-side-windows-test--with-rules
         (auto-side-windows-right-buffer-names (list (regexp-quote (buffer-name)))
-         auto-side-windows-top-buffer-names nil)
+                                              auto-side-windows-top-buffer-names nil)
       (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'right)))))
 
 (ert-deftest auto-side-windows-test-side-by-mode ()
