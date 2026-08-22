@@ -31,6 +31,7 @@
   - [[#bonus-boxes-around-side-windows][Bonus: Boxes around side windows]]
   - [[#known-limits][Known Limits]]
   - [[#how-it-works][How It Works]]
+  - [[#development][Development]]
   - [[#contributions][Contributions]]
   - [[#acknowledgments][Acknowledgments]]
   - [[#license][License]]
@@ -509,6 +510,26 @@ line show.  One hook boxes each buffer that goes to a side window:
 =display-buffer-alist=, the order of the questions that find the side,
 the slot, the geometry that keeps the sizes of a tab, the swap behind
 the move commands and the drag, and the toggle.
+
+** Development
+
+=make= runs what the CI runs: byte-compilation with warnings as errors,
+checkdoc, package-lint and the batch tests.  =make format= indents every
+Lisp file, which is =tools/indent.el= and nothing more than the
+indentation =indent-region= gives Lisp: no form is rewritten and no line
+reflowed.
+
+The hooks of =.pre-commit-config.yaml= run the whitespace and YAML
+checks, the formatter and checkdoc before a commit, the commit message
+through commitizen, and package-lint, the compilation and the tests
+before a push:
+
+#+begin_src shell
+  pre-commit install --install-hooks -t pre-commit -t commit-msg -t pre-push
+#+end_src
+
+The workflow of the same name runs them over every file, so a commit
+made without the hooks is still checked.
 
 ** Contributions
 
