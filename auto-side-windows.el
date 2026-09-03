@@ -593,7 +593,17 @@ is there to dress a side window."
                                    (auto-side-windows--side-option
                                     side 'parameters)))))))
         (run-hook-with-args 'auto-side-windows-before-display-hook buffer)
-        (let ((window (or (and (not wanted) (get-buffer-window buffer nil))
+        (let ((window (or (and (not wanted)
+                               ;; Not a window on another side: reusing
+                               ;; one moves the buffer nowhere, and it
+                               ;; would go on to claim the side it was
+                               ;; asked for rather than the one it is on.
+                               (when-let* ((shown (get-buffer-window
+                                                   buffer nil))
+                                           ((memq (window-parameter
+                                                   shown 'window-side)
+                                                  (list nil side))))
+                                 shown))
                           (display-buffer-in-side-window buffer alist))))
           ;; The reused window may be an ordinary one.  Then the buffer
           ;; went to no side and must not claim one, and the hook must
