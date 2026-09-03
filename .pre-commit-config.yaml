@@ -1,0 +1,70 @@
+# Checks that run before a commit, and the heavier ones before a push:
+#
+#     pre-commit install --install-hooks -t pre-commit -t commit-msg -t pre-push
+#
+# The workflow of the same name runs them over every file, so a commit
+# made without the hooks is still checked.  A commit message is checked
+# too: `type: summary', a blank line, then the reasoning.  The licence
+# is verbatim by definition, so the whitespace hooks leave it alone.
+exclude: ^COPYING$
+
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v6.0.0
+  hooks:
+  - id: check-added-large-files
+  - id: check-executables-have-shebangs
+  - id: check-merge-conflict
+  - id: check-shebang-scripts-are-executable
+  - id: check-yaml
+  - id: end-of-file-fixer
+  - id: mixed-line-ending
+    args: [--fix=lf]
+  - id: trailing-whitespace
+- repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+  rev: v2.16.0
+  hooks:
+  - id: pretty-format-yaml
+    args: [--autofix, --indent, '2']
+- repo: https://github.com/commitizen-tools/commitizen
+  rev: v4.17.0
+  hooks:
+  - id: commitizen
+  - id: commitizen-branch
+    stages: [pre-push]
+- repo: https://github.com/MArpogaus/elisp-complexity
+  rev: v0.1.0
+  hooks:
+  - id: elisp-complexity
+- repo: local
+  hooks:
+  - id: checkdoc
+    name: checkdoc
+    description: The documentation style of every Lisp file.
+    entry: make checkdoc
+    language: system
+    files: \.el$
+    pass_filenames: false
+  - id: relint
+    name: relint
+    description: The regexps and the doc string escapes of every Lisp file.
+    entry: make relint
+    language: system
+    files: \.el$
+    pass_filenames: false
+  - id: lint
+    name: package-lint
+    description: The MELPA rules, before a push rather than a commit.
+    entry: make lint
+    language: system
+    files: \.el$
+    pass_filenames: false
+    stages: [pre-push]
+  - id: tests
+    name: ert tests
+    description: Byte-compilation and the batch suite, before a push.
+    entry: make compile test
+    language: system
+    files: \.el$
+    pass_filenames: false
+    stages: [pre-push]
