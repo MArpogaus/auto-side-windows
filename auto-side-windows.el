@@ -386,9 +386,11 @@ in ALIST answers before the rules do, and ALIST is also passed to
 `buffer-match-p' for the conditions that ask for it."
   (with-current-buffer buffer
     (cond
-     (auto-side-windows--detached 'detached)
+     ;; Before the detached flag: a caller that names a side means it,
+     ;; and `detached' is no side to pass on to a side window.
      ((assq 'side alist)
       (alist-get 'side alist))
+     (auto-side-windows--detached 'detached)
      ;; A file-local setting, or the side this buffer went to before.
      (auto-side-windows-side)
      (t (seq-find (lambda (side)
