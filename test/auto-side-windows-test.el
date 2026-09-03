@@ -254,6 +254,10 @@ either lands on the other."
       (should (eq (auto-side-windows--slot-neighbour one 1) three))
       (should (eq (auto-side-windows--slot-neighbour three 1) one))
       (should (eq (auto-side-windows--slot-neighbour one -1) three))
+      ;; a step of a whole turn of the side leads nowhere: it would
+      ;; name WINDOW itself, and the swap would delete it twice
+      (should-not (auto-side-windows--slot-neighbour one 2))
+      (should-not (auto-side-windows--slot-neighbour three -2))
       ;; and a window that stands alone on its side has no neighbour
       (delete-window three)
       (should-not (auto-side-windows--slot-neighbour one 1)))))

@@ -641,6 +641,9 @@ on its side."
   (when-let* ((side (window-parameter window 'window-side))
               (windows (auto-side-windows--side-windows side))
               ((> (length windows) 1))
+              ;; A STEP of a whole turn of the side leads back to WINDOW
+              ;; itself, and the swap would then delete one window twice.
+              ((not (zerop (mod step (length windows)))))
               (at (seq-position windows window)))
     (nth (mod (+ at step) (length windows)) windows)))
 
