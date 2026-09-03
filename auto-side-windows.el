@@ -849,8 +849,11 @@ provided functions to `display-buffer-alist' to enable this feature."
   :group 'auto-side-windows
   (if auto-side-windows-mode
       (progn
+        ;; At the end: `display-buffer' takes the first entry that
+        ;; matches, and a `t' condition matches every buffer, so at the
+        ;; front this one would shadow every rule the reader has.
         (add-to-list 'display-buffer-alist
-                     '(t auto-side-windows--display-buffer))
+                     '(t auto-side-windows--display-buffer) t)
         (add-hook 'window-size-change-functions
                   #'auto-side-windows--measure))
     (remove-hook 'window-size-change-functions

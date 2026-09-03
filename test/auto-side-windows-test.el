@@ -187,6 +187,19 @@ the table is a test failure and not a nil at display time."
                    '((no-other-window . t))))
     (should (= (auto-side-windows--side-option 'top 'size) 7))))
 
+(ert-deftest auto-side-windows-test-the-rule-goes-last ()
+  "The mode's own entry sits behind the rules the reader has.
+`display-buffer' takes the first entry that matches and a `t' condition
+matches every buffer, so at the front this one would shadow them all."
+  (let ((display-buffer-alist '(("\\*Occur\\*" display-buffer-below-selected))))
+    (auto-side-windows-mode 1)
+    (unwind-protect
+        (should (equal (car (last display-buffer-alist))
+                       '(t auto-side-windows--display-buffer)))
+      (auto-side-windows-mode -1))
+    (should (equal display-buffer-alist
+                   '(("\\*Occur\\*" display-buffer-below-selected))))))
+
 (defmacro auto-side-windows-test--with-sides (&rest body)
   "Run BODY with the mode on and two buffers, `a' and `b'.
 The side windows, the two buffers and the measured sizes go afterwards,
