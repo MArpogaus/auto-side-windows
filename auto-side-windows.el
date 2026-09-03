@@ -409,18 +409,19 @@ Nil is no limit, which is what a nil entry in that variable means."
 As (SLOTS . MODE-SLOT), where MODE-SLOT is nil unless a window on SIDE
 shows a buffer whose major mode is MODE."
   ;; `auto-side-windows--side-windows' is defined below and answers for
-  ;; a whole frame; the slots are read off the windows it returns.
-  (let ((slots (delq nil (mapcar #'auto-side-windows--slot
-                                 (auto-side-windows--side-windows side))))
-        mode-slot)
-    (when mode
-      (dolist (window (auto-side-windows--side-windows side))
-        (when (and (eq mode (buffer-local-value 'major-mode
+  ;; a whole frame; the slots are read off the windows it returns, in
+  ;; one pass, and every window has a slot: a window without the
+  ;; parameter counts as slot zero.
+  (let (slots mode-slot)
+    (dolist (window (auto-side-windows--side-windows side))
+      (let ((slot (auto-side-windows--slot window)))
+        (push slot slots)
+        (when (and mode
+                   (eq mode (buffer-local-value 'major-mode
                                                 (window-buffer window)))
-                   (auto-side-windows--slot window))
-          (let ((slot (auto-side-windows--slot window)))
-            (setq mode-slot (if mode-slot (min mode-slot slot) slot))))))
-    (cons slots mode-slot)))
+                   (or (null mode-slot) (< slot mode-slot)))
+          (setq mode-slot slot))))
+    (cons (nreverse slots) mode-slot)))
 
 (defun auto-side-windows--lowest-free-slot (used limit)
   "Return the lowest slot that is not in USED, within LIMIT.
