@@ -10,11 +10,16 @@ to use the package.
 
 #+begin_src emacs-lisp
   (add-to-list 'display-buffer-alist
-               '(t auto-side-windows--display-buffer))
+               '(t auto-side-windows--display-buffer) t)
 #+end_src
 
 The mode removes the entry when it goes off.  One entry is enough,
 because the package asks its own rules for each buffer.
+
+The entry goes at the end, which is what the last argument of
+=add-to-list= says.  =display-buffer= takes the first entry that
+matches and a =t= condition matches every buffer, so at the front this
+one would shadow every rule the reader wrote.
 
 The condition of the entry is =t=, so =display-buffer= offers each
 buffer to =auto-side-windows--display-buffer=.  The function answers
@@ -26,15 +31,19 @@ that Emacs would take it without the package.
 =auto-side-windows--get-buffer-side= asks these questions, in this
 order:
 
-1. Is the buffer detached?  =auto-side-windows-toggle-side-window=
+1. Does the action alist name a side?  The commands
+   =auto-side-windows-display-buffer-top= and its three siblings put
+   the side there.  A caller that names a side means it, and it is
+   asked first: =detached= is no side to hand on to a side window.
+2. Is the buffer detached?  =auto-side-windows-toggle-side-window=
    sets =auto-side-windows--detached= in the buffer.  The buffer then
    goes to an ordinary window.
-2. Does the action alist name a side?  The commands
-   =auto-side-windows-display-buffer-top= and its three siblings put
-   the side there.
 3. Does the buffer know its side?  =auto-side-windows-side= holds it.
-   The buffer keeps the side that it went to before, and a file can
-   set the variable as a file-local variable.
+   A file sets the variable as a file-local variable, and
+   =auto-side-windows-display-buffer-on-side= sets it for the buffer a
+   reader sends to a side.  The display path writes it for nobody
+   else: a side that the rules chose is chosen again the next time, so
+   a buffer follows a rule that changes.
 4. Do the rules of a side match?  The package tries top, bottom, left
    and right, in this order.
 
@@ -79,9 +88,17 @@ its own therefore needs no bookkeeping in this package.
 
 =auto-side-windows--display-buffer= puts three things together:
 
-- the window parameters: the common ones and the ones of the side
+- the window parameters: the common ones, the ones of the side, and
+  the ones the caller of =display-buffer= brought
 - the action alist: the common one and the one of the side
 - the side and the slot
+
+The parameters go into one =window-parameters= entry in front of the
+action alist of the caller.  Emacs reads the first such entry it finds
+and no other, so an entry of the caller's left the parameters of the
+side unset.  It sets them in the order of the list, where the last of
+a name wins, so the caller's come last: theirs win, as their side and
+their slot do.
 
 =auto-side-windows--side-options= names every option of a side: its
 window parameters, its action alist, its size, and the three rules that
@@ -91,14 +108,9 @@ reads them, and a search finds them.
 
 The function then calls =display-buffer-in-side-window=, or it reuses
 the window that shows the buffer already.  A reused window can be an
-ordinary window.  The buffer then went to no side, and it must not
-claim one:
-
-- the buffer does not get a side in =auto-side-windows-side=
-- =auto-side-windows-after-display-hook= does not run
-
-The hook is there to dress a side window, and an ordinary window is
-not one.
+ordinary window.  The buffer then went to no side, so
+=auto-side-windows-after-display-hook= does not run for it: the hook is
+there to dress a side window, and an ordinary window is not one.
 
 * The geometry of a side
 
@@ -189,10 +201,18 @@ shows it.
 =auto-side-windows-toggle-side-window= moves the buffer of a side
 window into an ordinary window, and back.
 
-The command sets =auto-side-windows--detached= in the buffer, deletes
-the side window and displays the buffer again.  The buffer then goes
-to an ordinary window.  The command removes the mark on the second
-call, and the buffer goes back to its side.
+The command writes the side of the window into
+=auto-side-windows--detached=, deletes the side window and displays
+the buffer again.  The buffer then goes to an ordinary window, because
+a detached buffer has no side.  The second call takes the mark off and
+displays the buffer on the side the mark named: the buffer goes back
+where it came from, whether or not a rule of the package names that
+side, and whoever made that side window.
+
+A buffer that is in no side window and carries no mark has none to
+leave and none to go back to.  The command says so with a
+=user-error=; =auto-side-windows-display-buffer-on-side= is the one
+that sends such a buffer to a side.
 
 The side windows of a frame have their own parameters, and a display
 sets them again each time.  The package therefore writes only the
@@ -213,9 +233,12 @@ one entry that asks its own questions.
 
 - the side of a buffer, for each of the four questions above
 - the condition that the rules of a side make
-- the free slot, with and without a window to reuse
+- the free slot of an empty side, and none for a detached buffer
 - the options of each side
-- the toggle, in both directions
+- that a buffer follows a rule the reader changes, and that a command
+  which names a side is remembered
+- the window parameters of a caller, over the ones of the side
+- the toggle, in both directions and where there is nothing to toggle
 - the entry in =display-buffer-alist=, after the mode goes on and off
 - the neighbour of a slot, and that the last leads back to the first
 - the swap: which buffer is in which slot, that the windows are two and
