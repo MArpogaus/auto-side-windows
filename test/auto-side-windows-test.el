@@ -90,7 +90,12 @@ guard against."
     (setq-local auto-side-windows-side 'left)
     (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'left))
     (setq-local auto-side-windows--detached t)
-    (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'detached)))
+    (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'detached))
+    ;; A caller that names a side means it: `detached' is no side to
+    ;; pass on to `display-buffer-in-side-window'.
+    (should (eq (auto-side-windows--get-buffer-side (current-buffer)
+                                                    '((side . right)))
+                'right)))
   ;; A fresh buffer inherits neither.
   (with-temp-buffer
     (should-not (auto-side-windows--get-buffer-side (current-buffer)))))
