@@ -188,11 +188,11 @@ the table is a test failure and not a nil at display time."
     (should (= (auto-side-windows--side-option 'top 'size) 7))))
 
 (defmacro auto-side-windows-test--with-sides (&rest body)
-  "Run BODY with the mode on and two buffers, `a\=' and `b\='.
+  "Run BODY with the mode on and two buffers, `a\\=' and `b\\='.
 The side windows, the two buffers and the measured sizes go afterwards,
 and the mode off.
 A side window may not be the only window of a frame, so the sides are
-deleted one by one rather than with `delete-other-windows\='."
+deleted one by one rather than with `delete-other-windows\\='."
   (declare (indent 0))
   `(let ((a (get-buffer-create "*slot a*"))
          (b (get-buffer-create "*slot b*")))
@@ -377,7 +377,7 @@ a height, and each of its slots a width."
       (should-not (auto-side-windows--sizes 'bottom 0)))))
 
 (ert-deftest auto-side-windows-test-measure-takes-the-frame-it-is-given ()
-  "The frame `window-size-change-functions\=' names is the frame measured.
+  "The frame `window-size-change-functions\\=' names is the frame measured.
 A size change on a frame that is not selected would otherwise be written
 against the tab of the selected one, and the frame that changed would
 give nothing back."
@@ -393,7 +393,7 @@ give nothing back."
     (should (equal (delete-dups tabs) '(a-frame)))))
 
 (ert-deftest auto-side-windows-test-the-switch-forgets ()
-  "With `auto-side-windows-remember-sizes\=' nil nothing is kept or given back."
+  "With `auto-side-windows-remember-sizes\\=' nil nothing is kept or given back."
   (auto-side-windows-test--with-sides
     (let ((auto-side-windows-remember-sizes nil))
       (auto-side-windows-test--side-window a 'left 0)
