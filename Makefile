@@ -12,6 +12,10 @@
 
 EMACS   ?= emacs
 SANDBOX ?= .sandbox
+# The sandbox is done when the stamp is there: a run that dies half
+# way leaves the directory behind, and a directory target would then
+# count as made and the tools stay missing.
+STAMP   := $(SANDBOX)/.installed
 DEPS    ?= package-lint relint
 
 SRC  := $(filter-out %-autoloads.el %-pkg.el,$(wildcard *.el))
@@ -37,10 +41,11 @@ BATCH = $(EMACS) -Q --batch -L . -L test --eval '$(init)'
 
 all: compile checkdoc lint relint test
 
-$(SANDBOX):
+$(STAMP):
 	@$(EMACS) -Q --batch --eval '$(init)' --eval '$(bootstrap)'
+	@touch $@
 
-compile: $(SANDBOX)
+compile: $(STAMP)
 	@$(BATCH) --eval '(setq byte-compile-error-on-warn t)' \
 	  -f batch-byte-compile $(SRC) $(TEST)
 	@rm -f ./*.elc test/*.elc
@@ -51,16 +56,16 @@ checkdoc:
 	@out=$$($(BATCH) --eval '$(checkdoc)' $(SRC) 2>&1); \
 	  if [ -n "$$out" ]; then printf '%s\n' "$$out"; exit 1; fi
 
-lint: $(SANDBOX)
+lint: $(STAMP)
 	@$(BATCH) -f package-lint-batch-and-exit $(SRC)
 
 # What checkdoc and package-lint both let through: a docstring escape
 # written \= rather than \\=, which the reader eats, so `describe-function'
 # shows the wrong thing.
-relint: $(SANDBOX)
+relint: $(STAMP)
 	@$(BATCH) -l relint -f relint-batch $(SRC) $(TEST)
 
-test: $(SANDBOX)
+test: $(STAMP)
 	@$(BATCH) $(addprefix -l ,$(TEST)) -f ert-run-tests-batch-and-exit
 
 clean:
