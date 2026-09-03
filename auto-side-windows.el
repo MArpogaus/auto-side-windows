@@ -396,38 +396,60 @@ in ALIST answers before the rules do, and ALIST is also passed to
                                     buffer alist))
                   '(top bottom left right))))))
 
+(defun auto-side-windows--side-limit (side)
+  "Return how many slots `window-sides-slots\' allows on SIDE, or nil.
+Nil is no limit, which is what a nil entry in that variable means."
+  (nth (pcase side ('left 0) ('top 1) ('right 2) ('bottom 3))
+       window-sides-slots))
+
+(defun auto-side-windows--slots-in-use (side mode)
+  "Return the slots taken on SIDE, and the lowest one showing MODE.
+As (SLOTS . MODE-SLOT), where MODE-SLOT is nil unless a window on SIDE
+shows a buffer whose major mode is MODE."
+  ;; `auto-side-windows--side-windows' is defined below and answers for
+  ;; a whole frame; the slots are read off the windows it returns.
+  (let ((slots (delq nil (mapcar #'auto-side-windows--slot
+                                 (auto-side-windows--side-windows side))))
+        mode-slot)
+    (when mode
+      (dolist (window (auto-side-windows--side-windows side))
+        (when (and (eq mode (buffer-local-value 'major-mode
+                                                (window-buffer window)))
+                   (auto-side-windows--slot window))
+          (let ((slot (auto-side-windows--slot window)))
+            (setq mode-slot (if mode-slot (min mode-slot slot) slot))))))
+    (cons slots mode-slot)))
+
+(defun auto-side-windows--lowest-free-slot (used limit)
+  "Return the lowest slot that is not in USED, within LIMIT.
+LIMIT of nil is no limit.  Where every slot up to the limit is taken,
+the last one is returned and thus reused."
+  (let ((slot 0))
+    (while (and (memq slot used)
+                (or (null limit) (< slot (1- limit))))
+      (setq slot (1+ slot)))
+    slot))
+
 (defun auto-side-windows--get-next-free-slot (side buffer)
   "Return the slot number to display BUFFER in on SIDE.
 Slots are numbered from zero, and this never returns a negative one, so
 a slot a caller asks for below zero stays that caller's own.
 
 Side windows showing a buffer with the same major mode as BUFFER are
-reused when `auto-side-windows-reuse-mode-window' is non-nil for SIDE;
+reused when `auto-side-windows-reuse-mode-window\' is non-nil for SIDE;
 the lowest such slot wins.  Otherwise the lowest free slot is returned.
 
-When `window-sides-slots' limits the number of slots on SIDE and all of
+When `window-sides-slots\' limits the number of slots on SIDE and all of
 them are taken, the last slot is returned and thus reused.  A nil entry
 in that variable means no limit."
   (unless (eq side 'detached)
-    (let* ((max-slots (nth (pcase side ('left 0) ('top 1) ('right 2) ('bottom 3))
-                           window-sides-slots))
-           (buffer-mode (buffer-local-value 'major-mode buffer))
-           (reuse (alist-get side auto-side-windows-reuse-mode-window))
-           used-slots mode-slot)
-      (dolist (win (window-list))
-        (when (eq (window-parameter win 'window-side) side)
-          (when-let* ((slot (window-parameter win 'window-slot)))
-            (push slot used-slots)
-            (when (and reuse
-                       (eq buffer-mode
-                           (buffer-local-value 'major-mode (window-buffer win))))
-              (setq mode-slot (if mode-slot (min mode-slot slot) slot))))))
-      (or mode-slot
-          (let ((slot 0))
-            (while (and (memq slot used-slots)
-                        (or (null max-slots) (< slot (1- max-slots))))
-              (setq slot (1+ slot)))
-            slot)))))
+    (let ((in-use (auto-side-windows--slots-in-use
+                   side (and (alist-get side
+                                        auto-side-windows-reuse-mode-window)
+                             (buffer-local-value 'major-mode buffer)))))
+      (or (cdr in-use)
+          (auto-side-windows--lowest-free-slot
+           (car in-use) (auto-side-windows--side-limit side))))))
 
 ;;;; Geometry
 
@@ -500,19 +522,28 @@ a window changes no count."
                                  windows))))))))
       (auto-side-windows--set-geometry geometry frame))))
 
+(defun auto-side-windows--size (across kind size)
+  "Return the action alist entry that gives SIZE, or nil for none.
+KIND is `along\' for the length of the side itself and `slot\' for the
+one slot; ACROSS says whether the side runs across the frame, which is
+what decides whether a length is a width or a height."
+  (when size
+    (list (cons (if (eq (and across t) (eq kind 'along))
+                    'window-width
+                  'window-height)
+                size))))
+
 (defun auto-side-windows--sizes (side slot)
   "Return the action alist that gives SIDE and SLOT the size they had.
 Nil where nothing was measured, or where the sizes are not remembered."
   (when auto-side-windows-remember-sizes
     (when-let* ((entry (alist-get side (auto-side-windows--geometry))))
-      (let ((across (auto-side-windows--across-p side))
-            (size (alist-get 'size entry))
-            (slot-size (alist-get slot (alist-get 'slots entry))))
-        (append (when size
-                  (list (cons (if across 'window-width 'window-height) size)))
-                (when slot-size
-                  (list (cons (if across 'window-height 'window-width)
-                              slot-size))))))))
+      ;; Not in the `when-let*': a side that does not run across the
+      ;; frame answers nil, which is an answer and not a reason to stop.
+      (let ((across (auto-side-windows--across-p side)))
+        (append (auto-side-windows--size across 'along (alist-get 'size entry))
+                (auto-side-windows--size
+                 across 'slot (alist-get slot (alist-get 'slots entry))))))))
 
 (defun auto-side-windows--display-buffer (buffer alist)
   "Display BUFFER in a side window, for `display-buffer-alist'.
