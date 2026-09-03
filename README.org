@@ -222,8 +222,10 @@ whatever the rules say:
   ;; -*- auto-side-windows-side: right; -*-
 #+end_src
 
-The display function writes the variable too, so a buffer that went to a
-side goes back to the same one.  Nil leaves the buffer to the rules.
+=auto-side-windows-display-buffer-on-side= and its four siblings write
+the variable as well: a buffer you send to a side goes there again
+each time it is displayed.  A side that the rules chose is not written
+into the buffer, so a buffer follows a rule you change.
 
 ** Customization
 
