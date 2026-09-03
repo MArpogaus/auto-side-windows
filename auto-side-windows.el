@@ -514,14 +514,26 @@ a window changes no count."
                       ;; the layout changed: keep the sizes, take the count
                       (cons (cons 'count now)
                             (assq-delete-all 'count (copy-sequence entry)))
-                    `((size . ,(auto-side-windows--window-size (car windows) across))
-                      (count . ,now)
-                      (slots . ,(mapcar
-                                 (lambda (window)
-                                   (cons (auto-side-windows--slot window)
-                                         (auto-side-windows--window-size
-                                          window (not across))))
-                                 windows))))))))
+                    (let ((measured
+                           (mapcar
+                            (lambda (window)
+                              (cons (auto-side-windows--slot window)
+                                    (auto-side-windows--window-size
+                                     window (not across))))
+                            windows)))
+                      `((size . ,(auto-side-windows--window-size
+                                  (car windows) across))
+                        (count . ,now)
+                        ;; The slots there are now, and after them the
+                        ;; ones measured before: `alist-get' answers
+                        ;; with the first, so a slot that is empty now
+                        ;; keeps the size it had when it was last shown.
+                        (slots . ,(append
+                                   measured
+                                   (seq-remove
+                                    (lambda (slot)
+                                      (assq (car slot) measured))
+                                    (alist-get 'slots entry)))))))))))
       (auto-side-windows--set-geometry geometry frame))))
 
 (defun auto-side-windows--size (across kind size)
