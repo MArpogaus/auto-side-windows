@@ -140,11 +140,11 @@ The command used to reference an unbound variable on this path."
           (should (eq (window-buffer window) buffer))))
     (auto-side-windows-mode -1)))
 
-(ert-deftest auto-side-windows-test-reused-plain-window-claims-no-side ()
+(ert-deftest auto-side-windows-test-reused-plain-window-runs-no-hook ()
   "A buffer already on screen in an ordinary window stays ordinary.
-The window is reused as documented, but the buffer went to no side,
-so it must not remember one, and the after-display hook must not run:
-it is there to dress a side window."
+The window is reused as documented, but the buffer went to no side, so
+the after-display hook must not run: it is there to dress a side
+window."
   (let* ((buffer (get-buffer-create "*auto-side-windows-test*"))
          (auto-side-windows-right-buffer-modes '(help-mode))
          (auto-side-windows-after-display-hook nil)
@@ -160,17 +160,14 @@ it is there to dress a side window."
             (set-window-buffer plain buffer)
             (auto-side-windows--display-buffer buffer nil)
             (should-not (window-parameter plain 'window-side))
-            (should-not ran)
-            (should-not (buffer-local-value 'auto-side-windows-side buffer)))
-          ;; a window that really is a side still gets both
+            (should-not ran))
+          ;; a window that really is a side runs it
           (delete-other-windows)
           (switch-to-buffer "*scratch*")
           (setq ran nil)
           (let ((window (auto-side-windows--display-buffer buffer nil)))
             (should (eq (window-parameter window 'window-side) 'right))
-            (should ran)
-            (should (eq (buffer-local-value 'auto-side-windows-side buffer)
-                        'right))))
+            (should ran)))
       (kill-buffer buffer)
       (delete-other-windows))))
 
@@ -422,6 +419,67 @@ give nothing back."
       (auto-side-windows--measure nil)
       (should-not (auto-side-windows--geometry))
       (should-not (auto-side-windows--sizes 'left 0)))))
+
+(ert-deftest auto-side-windows-test-a-buffer-follows-the-rules ()
+  "A side the rules chose is not written into the buffer.
+The buffer-local side answers before the rules do, so a buffer that
+kept the side it went to first never saw a rule the reader changed
+afterwards.  A side that a command names is kept, and it puts such a
+buffer on that side each time it is displayed."
+  (auto-side-windows-test--with-sides
+    (let ((auto-side-windows-left-buffer-names '("\\`\\*slot")))
+      (auto-side-windows--display-buffer a nil)
+      (should-not (buffer-local-value 'auto-side-windows-side a)))
+    ;; the reader moves the rule to another side, and the buffer follows
+    (let ((auto-side-windows-right-buffer-names '("\\`\\*slot")))
+      (should (eq (auto-side-windows--get-buffer-side a) 'right)))
+    ;; a command that names a side is the reader saying so
+    (with-current-buffer a
+      (auto-side-windows-display-buffer-on-side 'top))
+    (should (eq (buffer-local-value 'auto-side-windows-side a) 'top))))
+
+(ert-deftest auto-side-windows-test-the-caller-adds-window-parameters ()
+  "The parameters of a caller come on top of those of the side.
+Emacs reads the first `window-parameters' of the action alist and no
+other, so an entry of the caller's left the parameters of the side
+unset.  They are set in the order of the list, and the caller's come
+last: theirs win where both name one, as their side and their slot do."
+  (auto-side-windows-test--with-sides
+    (let* ((auto-side-windows-common-window-parameters '((no-other-window . t)))
+           (auto-side-windows-left-window-parameters
+            '((no-delete-other-windows . t)))
+           (auto-side-windows-left-buffer-names '("\\`\\*slot"))
+           (window (auto-side-windows--display-buffer
+                    a '((window-parameters . ((no-other-window)
+                                              (mine . t)))))))
+      (should window)
+      (should (eq (window-parameter window 'window-side) 'left))
+      ;; the parameters of the side arrived
+      (should (window-parameter window 'no-delete-other-windows))
+      ;; and so did the caller's, which win over the common ones
+      (should (window-parameter window 'mine))
+      (should-not (window-parameter window 'no-other-window)))))
+
+(ert-deftest auto-side-windows-test-the-toggle-goes-both-ways ()
+  "The toggle takes a buffer out of its side window, and back into it.
+No rule of the package names this buffer: the mark holds the side the
+buffer came from, and that is what takes it back.  A buffer that is in
+no side window and was detached from none has nowhere to go, and the
+command says so rather than doing nothing."
+  (auto-side-windows-test--with-sides
+    (select-window (auto-side-windows-test--side-window a 'left 0))
+    (auto-side-windows-toggle-side-window)
+    (should (eq (buffer-local-value 'auto-side-windows--detached a) 'left))
+    (should-not (window-parameter (get-buffer-window a) 'window-side))
+    ;; and back to the side it came from
+    (select-window (get-buffer-window a))
+    (auto-side-windows-toggle-side-window)
+    (should-not (buffer-local-value 'auto-side-windows--detached a))
+    (should (eq (window-parameter (get-buffer-window a) 'window-side) 'left))
+    ;; a buffer that was in no side window is told, not toggled
+    (with-current-buffer b
+      (should-error (auto-side-windows-toggle-side-window)
+                    :type 'user-error))))
 
 (ert-deftest auto-side-windows-test-a-size-comes-from-its-option ()
   "The size of a side comes from its option, before its action alist.
