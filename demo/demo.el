@@ -80,7 +80,7 @@
   (goto-char (point-min))
   (redisplay t)
   (make-directory "/tmp/demo-asw/frames" t)
-    (demo--hold 2.5)
+  (demo--hold 2.5)
   ;; 1. help lands on the right
   (describe-function 'forward-line)
   (message nil)
@@ -149,7 +149,7 @@
     (when-let* ((w (get-buffer-window b))) (delete-window w))
     (demo--hold 1.0))
   (demo--hold 2.0)
-    (write-region (format "frames=%d\n" demo--frame) nil "/tmp/demo-asw/done")
+  (write-region (format "frames=%d\n" demo--frame) nil "/tmp/demo-asw/done")
   (kill-emacs 0))
 (run-with-timer 1.0 nil
                 (lambda ()

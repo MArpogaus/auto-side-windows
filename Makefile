@@ -1,12 +1,13 @@
 # Development tasks.  Run `make' to check everything, as the CI does.
 #
 #   make compile   byte-compile, warnings are errors
-#   make checkdoc  documentation style
 #   make lint      package-lint, the MELPA rules
 #   make relint    the regular expressions and the docstring escapes
 #   make test      ERT test suite
-#   make format    indent every Lisp file in place
 #   make clean     remove build output and the tool sandbox
+#
+# The indent, checkdoc and complexity checks are pre-commit hooks of
+# https://github.com/MArpogaus/elisp-complexity, not targets here.
 #
 # The checks install their tools and this package's dependencies into
 # $(SANDBOX), so a fresh checkout needs nothing but Emacs and make.
@@ -21,8 +22,6 @@ DEPS    ?= package-lint relint
 
 SRC  := $(filter-out %-autoloads.el %-pkg.el,$(wildcard *.el))
 TEST := $(wildcard test/*.el)
-# Everything written in Lisp, the parts that are no package included.
-LISP := $(SRC) $(wildcard test/*.el) $(wildcard tools/*.el)
 
 # Elisp programs live in variables: make joins their continuation lines,
 # while a backslash inside a quoted recipe line would reach Emacs as is.
@@ -34,15 +33,12 @@ init = (progn (setq package-user-dir (expand-file-name "$(SANDBOX)")) \
 bootstrap = (progn (package-refresh-contents) \
                    (dolist (p (quote ($(DEPS)))) \
                      (unless (package-installed-p p) (package-install p))))
-checkdoc = (progn (require (quote checkdoc)) \
-                  (setq checkdoc-verb-check-experimental-flag nil) \
-                  (dolist (f command-line-args-left) (checkdoc-file f)))
 
 BATCH = $(EMACS) -Q --batch -L . -L test --eval '$(init)'
 
-.PHONY: all compile checkdoc lint relint test format clean
+.PHONY: all compile lint relint test clean
 
-all: compile checkdoc lint relint test
+all: compile lint relint test
 
 $(STAMP):
 	@$(EMACS) -Q --batch --eval '$(init)' --eval '$(bootstrap)'
@@ -52,12 +48,6 @@ compile: $(STAMP)
 	@$(BATCH) --eval '(setq byte-compile-error-on-warn t)' \
 	  -f batch-byte-compile $(SRC) $(TEST)
 	@rm -f ./*.elc test/*.elc
-
-# checkdoc reports on stderr and always exits zero, so treat any output
-# as a failure.
-checkdoc:
-	@out=$$($(BATCH) --eval '$(checkdoc)' $(SRC) 2>&1); \
-	  if [ -n "$$out" ]; then printf '%s\n' "$$out"; exit 1; fi
 
 lint: $(STAMP)
 	@$(BATCH) -f package-lint-batch-and-exit $(SRC)
@@ -70,14 +60,6 @@ relint: $(STAMP)
 
 test: $(STAMP)
 	@$(BATCH) $(addprefix -l ,$(TEST)) -f ert-run-tests-batch-and-exit
-
-# The formatter loads each file before indenting it, so a macro of this
-# package indents its body the way its `declare' says; that needs the
-# load path and the dependencies, which is why it wants the sandbox.
-# It answers 1 when it had to change something, which is how the hook
-# stops a commit; from make that is a job done, not a failure.
-format: $(STAMP)
-	@$(BATCH) -l tools/indent.el $(LISP) || true
 
 clean:
 	@rm -rf $(SANDBOX) ./*.elc test/*.elc
