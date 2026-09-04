@@ -430,13 +430,28 @@ shows a buffer whose major mode is MODE."
 
 (defun auto-side-windows--lowest-free-slot (used limit)
   "Return the lowest slot that is not in USED, within LIMIT.
-LIMIT of nil is no limit.  Where every slot up to the limit is taken,
-the last one is returned and thus reused."
-  (let ((slot 0))
-    (while (and (memq slot used)
-                (or (null limit) (< slot (1- limit))))
-      (setq slot (1+ slot)))
-    slot))
+LIMIT of nil is no limit.
+
+A side that holds as many windows as LIMIT allows is full, whatever
+slots those windows sit in.  `display-buffer-in-side-window' splits no
+window then: it reuses the window whose slot lies nearest the one that
+is asked for, and a free slot number sends it to any window of the
+side — measured, it took a window a caller had put at slot -1, which
+`auto-side-windows--get-next-free-slot' promises to leave alone.  On a
+full side the highest slot at or above zero among USED is therefore
+returned: the reuse is then an exact match, the last slot is the one
+that turns over, and the negative slots stay their callers' own.  A
+full side whose slots are all negative falls through to the free slot,
+and the window nearest that answer is the one Emacs takes."
+  (if-let* ((limit)
+            ((>= (length used) limit))
+            (taken (seq-filter (lambda (slot) (>= slot 0)) used)))
+      (apply #'max taken)
+    (let ((slot 0))
+      (while (and (memq slot used)
+                  (or (null limit) (< slot (1- limit))))
+        (setq slot (1+ slot)))
+      slot)))
 
 (defun auto-side-windows--get-next-free-slot (side buffer)
   "Return the slot number to display BUFFER in on SIDE.

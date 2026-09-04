@@ -114,6 +114,26 @@ guard against."
     (should (equal (auto-side-windows--get-next-free-slot 'right (current-buffer)) 0))
     (should-not (auto-side-windows--get-next-free-slot 'detached (current-buffer)))))
 
+(ert-deftest auto-side-windows-test-a-full-side-answers-a-slot-that-is-there ()
+  "A full side answers with the slot of a window that is there.
+`window-sides-slots' counts every window of the side, a caller's
+negative slot among them.  A full side splits no window: Emacs reuses
+the one nearest the slot it is handed, so a free slot number sent it to
+any window of the side — measured with a limit of two and a caller's
+window at slot -1, the buffer took that window.  The highest slot at or
+above zero makes the reuse an exact match and leaves the negative slots
+alone."
+  ;; under the limit: the lowest free slot, as before
+  (should (equal (auto-side-windows--lowest-free-slot nil 2) 0))
+  (should (equal (auto-side-windows--lowest-free-slot '(0) 2) 1))
+  (should (equal (auto-side-windows--lowest-free-slot '(0 2) nil) 1))
+  ;; full: the last slot turns over, wherever the free numbers lie
+  (should (equal (auto-side-windows--lowest-free-slot '(0 1) 2) 1))
+  (should (equal (auto-side-windows--lowest-free-slot '(-1 0) 2) 0))
+  (should (equal (auto-side-windows--lowest-free-slot '(-1 1) 2) 1))
+  ;; full of negative slots only: nothing of ours to reuse
+  (should (equal (auto-side-windows--lowest-free-slot '(-2 -1) 2) 0)))
+
 (ert-deftest auto-side-windows-test-mode-toggles-display-alist ()
   "The mode adds its display function and takes it back out again."
   (let ((display-buffer-alist nil))
