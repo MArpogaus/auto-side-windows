@@ -70,8 +70,14 @@ window that it can reuse:
 - a window with a buffer of the same major mode, if
   =auto-side-windows-reuse-mode-window= names the side
 
-The function returns the highest allowed slot if each slot is in use.
-The new buffer then replaces the buffer in that window.
+A side that holds as many windows as =window-sides-slots= allows is
+full, whatever slots those windows sit in.  Emacs splits no window on a
+full side: it reuses the window whose slot lies nearest the one it is
+handed.  A free slot number can then point at any window of the side —
+measured with a limit of two and a caller's window at slot -1, the new
+buffer took that window.  The function therefore returns the highest
+slot at or above zero of the windows that are there.  The reuse is an
+exact match, and the new buffer replaces the buffer of the last slot.
 
 A caller can name the slot instead, with a =slot= in the action alist.
 =auto-side-windows--display-buffer= then takes that number and skips the
@@ -233,7 +239,8 @@ one entry that asks its own questions.
 
 - the side of a buffer, for each of the four questions above
 - the condition that the rules of a side make
-- the free slot of an empty side, and none for a detached buffer
+- the free slot of an empty side, none for a detached buffer, and the
+  slot of a window that is there for a full side
 - the options of each side
 - that a buffer follows a rule the reader changes, and that a command
   which names a side is remembered
