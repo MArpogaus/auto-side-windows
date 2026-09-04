@@ -31,8 +31,11 @@ jobs:
     - run: |
         sudo apt-get install emacs && emacs --version
         git clone --depth 1 https://github.com/riscy/melpazoid.git ~/melpazoid
+    # melpazoid asks GitHub about the repository the recipe names, so it
+    # must be one that exists.  The string is unquoted because the YAML
+    # formatter writes a plain scalar, and a quoted one fails that hook.
     - env:
         LOCAL_REPO: ${{ github.workspace }}
-        RECIPE: '(auto-side-windows :fetcher github :repo "MArpogaus/auto-side-windows")'
+        RECIPE: (auto-side-windows :fetcher github :repo "MArpogaus/auto-side-windows")
         EXIST_OK: true
       run: make -C ~/melpazoid
