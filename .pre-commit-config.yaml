@@ -33,25 +33,13 @@ repos:
   - id: commitizen-branch
     stages: [pre-push]
 - repo: https://github.com/MArpogaus/elisp-complexity
-  rev: v0.1.0
+  rev: v0.2.0
   hooks:
   - id: elisp-complexity
+  - id: elisp-indent
+  - id: elisp-checkdoc
 - repo: local
   hooks:
-  - id: indent
-    name: indent
-    description: The indentation Emacs gives Lisp, in place.
-    entry: make format
-    language: system
-    files: \.el$
-    pass_filenames: false
-  - id: checkdoc
-    name: checkdoc
-    description: The documentation style of every Lisp file.
-    entry: make checkdoc
-    language: system
-    files: \.el$
-    pass_filenames: false
   - id: relint
     name: relint
     description: The regexps and the doc string escapes of every Lisp file.

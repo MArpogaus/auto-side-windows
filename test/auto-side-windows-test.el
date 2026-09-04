@@ -211,7 +211,7 @@ the table is a test failure and not a nil at display time."
 
 (ert-deftest auto-side-windows-test-the-rule-goes-last ()
   "The mode's own entry sits behind the rules the reader has.
-`display-buffer' takes the first entry that matches and a `t' condition
+`display-buffer' takes the first entry that matches and a t condition
 matches every buffer, so at the front this one would shadow them all."
   (let ((display-buffer-alist '(("\\*Occur\\*" display-buffer-below-selected))))
     (auto-side-windows-mode 1)
