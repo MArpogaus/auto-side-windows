@@ -13,13 +13,16 @@ jobs:
     - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97   # v7.0.0
       with:
         python-version: 3.x
-    # The local hooks call make, which calls Emacs.  The same Emacs the
-    # test matrix ends on, not whichever one the runner image ships: the
-    # two answered differently about one doc string, and a check that
-    # disagrees with the checks beside it is worth nothing.
+    # The local hooks call make, which calls Emacs.  Emacs 31.1, the
+    # release the checks are written against, not whichever one the
+    # runner image ships and not the older release this job used to
+    # name: checkdoc up to 30.2 reports a doc string line over 80
+    # columns and 31.1 no longer looks for one, so the two disagreed
+    # about files that pass here and a check that disagrees with the
+    # checks beside it is worth nothing.
     - uses: purcell/setup-emacs@bdc64dc730ae1fcba200bfd52cb1b4cf6159cbe5   # v8.0
       with:
-        version: '30.2'
+        version: '31.1'
     - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd   # v3.0.1
 
   # melpazoid ships no PyPI package, so its own repository is cloned.
