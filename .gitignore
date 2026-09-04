@@ -131,3 +131,4 @@ $RECYCLE.BIN/
 ### This project ###
 # tool sandbox created by the Makefile
 /.sandbox/
+demo/frames/

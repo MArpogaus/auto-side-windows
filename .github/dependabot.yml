@@ -1,0 +1,20 @@
+# The actions are pinned to commit hashes, so an update is a pull
+# request against the branch the work happens on.  The hooks of
+# .pre-commit-config.yaml are pinned to tags, and Dependabot reads
+# those as well.
+version: 2
+updates:
+- package-ecosystem: github-actions
+  directory: /
+  target-branch: dev
+  schedule:
+    interval: weekly
+  commit-message:
+    prefix: ci
+- package-ecosystem: pre-commit
+  directory: /
+  target-branch: dev
+  schedule:
+    interval: weekly
+  commit-message:
+    prefix: ci
