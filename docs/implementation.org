@@ -155,8 +155,38 @@ It measures a side only while the side
 has as many windows as it had when it was measured last.  A window that
 goes gives its lines to a sister, and measuring then would keep a size
 nobody asked for; a reader who resizes a window changes no count.  The
-commands that delete a side window measure first, because a redisplay
-may not have happened since the reader resized.
+first look at a side counts its windows and measures nothing: a new
+window has the size its caller asked for, and =display-warning= asks for
+a window that fits its text.  Measured before this rule existed: a
+=*Warnings*= of nine lines on the top made every top window nine lines
+tall from then on, where the option said fifteen.  The commands that
+delete a side window measure first, because a redisplay may not have
+happened since the reader resized.
+
+The sizes are pixels, and the entries that give them back are functions
+that call =window-resize= pixelwise.  A window resized pixelwise, as it
+is with =window-resize-pixelwise= set, has no whole number of lines when
+its header line is made of images: measured, a top window of 152 pixels
+counted 9 lines before a neighbour closed and 8 after, with the same
+152 pixels, and a =window-height= of 9 lines gave it back a line too
+tall.  On a text terminal a pixel is a character, so nothing changes
+there.
+
+The measurement also calls =window-preserve-size= on every side window,
+for the width of a left or a right side and the height of a top or a
+bottom one.  Emacs then treats the window as fixed in that direction
+when it distributes space: a window that closes or a frame that changes
+leaves the side alone and the editing area takes the difference.  This
+is what =window-combination-resize= set to =t= needed, where a window
+that closes gives its space to every sibling.  Measured with that
+setting: a bottom panel of 17 lines closed and the top panel grew from
+8 lines to 14, and the next measurement kept the 14 as the reader's.  A
+preserved size is bound to the buffer the window showed and to the
+size it had, so =auto-side-windows--display-buffer= preserves the window
+again after each display, and the measurement preserves it again after
+each resize.  =adjust-window-trailing-edge=, which is what a drag of a
+divider calls, resizes a preserved window when it has to, so the
+reader's hand still moves it.
 
 =auto-side-windows--sizes= turns a record into the two entries of an
 action alist: the size of the side, a width for a left or a right side
@@ -220,9 +250,19 @@ leave and none to go back to.  The command says so with a
 =user-error=; =auto-side-windows-display-buffer-on-side= is the one
 that sends such a buffer to a side.
 
-The side windows of a frame have their own parameters, and a display
-sets them again each time.  The package therefore writes only the
-parameters of a window that has =window-side=.
+Both directions go through =pop-to-buffer=, so the reader stays with
+the buffer wherever it went.  A =display-buffer= with
+=post-command-select-window= did this before, and it did it only for a
+command: the selection waits for =post-command-hook=, which a call from
+Lisp never reaches, and the demo's second toggle worked by accident,
+because the current buffer had stayed the help buffer while the selected
+window showed something else.
+
+The command acts on the buffer of the selected window.  For a command
+that is the current buffer; a call from Lisp may have made another
+buffer current, and the window it would have deleted was then the wrong
+one.  =auto-side-windows-display-buffer-on-side= leaves the selected
+window alone for the same reason unless it shows the buffer being sent.
 
 * Known cost
 
@@ -245,7 +285,8 @@ one entry that asks its own questions.
 - that a buffer follows a rule the reader changes, and that a command
   which names a side is remembered
 - the window parameters of a caller, over the ones of the side
-- the toggle, in both directions and where there is nothing to toggle
+- the toggle, in both directions, that the reader stays with the buffer,
+  and where there is nothing to toggle
 - the entry in =display-buffer-alist=, after the mode goes on and off
 - the neighbour of a slot, and that the last leads back to the first
 - the swap: which buffer is in which slot, that the windows are two and
@@ -253,9 +294,15 @@ one entry that asks its own questions.
 - the drag, and that it does nothing across two sides, into an ordinary
   window, or where it began
 - that the package binds no key
-- the measurement, that a window which goes leaves the sizes alone, and
-  that the frame it is given is the frame it reads
-- which action alist entries a record turns into, for a side and a slot
+- the measurement, that a window which goes leaves the sizes alone,
+  that the first look records no size, and that the frame it is given is
+  the frame it reads
+- that the size along a side is preserved, holds when a window closes
+  under =window-combination-resize=, and is preserved again after a
+  resize; and that nothing is preserved where nothing is remembered
+- that a side allowing no slot shows nothing and runs no hook
+- which action alist entries a record turns into, for a side and a slot,
+  and that the entry gives the window its pixels back
 - that the switch forgets both the measuring and the giving back
 - that the size of a side comes from its option before its alist
 
