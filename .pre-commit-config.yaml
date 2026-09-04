@@ -38,8 +38,18 @@ repos:
   - id: elisp-complexity
   - id: elisp-indent
   - id: elisp-checkdoc
+  - id: elisp-check-declare
 - repo: local
   hooks:
+  - id: melpazoid
+    name: melpazoid
+    description: What the MELPA reviewer's checks say about the recipe.
+    entry: melpazoid
+    args: [--recipe, '(auto-side-windows :fetcher github :repo "MArpogaus/auto-side-windows")']
+    language: system
+    pass_filenames: false
+    always_run: true
+    stages: [pre-push]
   - id: relint
     name: relint
     description: The regexps and the doc string escapes of every Lisp file.
