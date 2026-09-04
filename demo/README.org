@@ -4,17 +4,29 @@
 recorder: =demo.el= drives a scripted session and captures one frame
 per tenth of a second through =x-export-frames=.
 
+The configuration in the recording is the example configuration of the
+README, nothing more.  =demo.el= starts with that =use-package= form;
+only =:ensure= and =:load-path= differ, because the package comes from
+the checkout and not from MELPA.  The rest of the file is presentation:
+a frame of 1120 by 680 pixels, a 13 point font, window dividers, and
+the steps of the session.
+
 #+begin_src shell
-  Xvfb :99 -screen 0 1280x900x24 &   # when there is no display
-  DISPLAY=:99 emacs -Q -l demo.el    # writes frames to /tmp
+  Xvfb :99 -screen 0 1280x900x24 &        # when there is no display
+  DISPLAY=:99 emacs -Q -l demo/demo.el    # writes demo/frames/f0001.png ...
 #+end_src
 
-Build the animation from the frames:
+Build the animation from the frames.  The final view is held for a
+while, so the loop does not restart with a jump; the frames play a
+little faster than they were taken.
 
 #+begin_src shell
+  cd demo
   ffmpeg -framerate 13 -start_number 1 -i frames/f%04d.png \
-      -filter_complex "[0:v]scale=820:-1:flags=lanczos,split[a][b];\
-                       [a]palettegen=max_colors=128[p];[b][p]paletteuse" \
+      -filter_complex "[0:v]tpad=stop_mode=clone:stop_duration=2.5,\
+                       scale=820:-1:flags=lanczos,split[a][b];\
+                       [a]palettegen=max_colors=128[p];\
+                       [b][p]paletteuse=dither=bayer:bayer_scale=3" \
       -loop 0 raw.gif
   gifsicle -O3 --lossy=80 raw.gif -o ../img/demo.gif
 #+end_src
