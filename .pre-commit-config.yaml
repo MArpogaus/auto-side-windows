@@ -32,7 +32,7 @@ repos:
   - id: commitizen
   - id: commitizen-branch
     stages: [pre-push]
-- repo: https://github.com/MArpogaus/elisp-complexity
+- repo: https://github.com/MArpogaus/emacs-pre-commit-hooks
   rev: v0.2.0
   hooks:
   - id: elisp-complexity
