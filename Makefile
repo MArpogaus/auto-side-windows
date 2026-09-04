@@ -7,7 +7,7 @@
 #   make clean     remove build output and the tool sandbox
 #
 # The indent, checkdoc and complexity checks are pre-commit hooks of
-# https://github.com/MArpogaus/elisp-complexity, not targets here.
+# https://github.com/MArpogaus/emacs-pre-commit-hooks, not targets here.
 #
 # The checks install their tools and this package's dependencies into
 # $(SANDBOX), so a fresh checkout needs nothing but Emacs and make.
