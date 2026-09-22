@@ -91,22 +91,34 @@ guard against."
     (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'left))
     (setq-local auto-side-windows--detached t)
     (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'detached))
-    ;; A caller that names a side means it: `detached' is no side to
-    ;; pass on to `display-buffer-in-side-window'.
+    (should (eq (auto-side-windows--get-buffer-side
+                 (current-buffer) '((auto-side-windows-side . right)))
+                'right))
     (should (eq (auto-side-windows--get-buffer-side (current-buffer)
                                                     '((side . right)))
-                'right)))
+                'detached)))
   ;; A fresh buffer inherits neither.
   (with-temp-buffer
     (should-not (auto-side-windows--get-buffer-side (current-buffer)))))
 
 (ert-deftest auto-side-windows-test-side-from-alist ()
-  "An explicit side in the display alist wins over the rules."
+  "An `auto-side-windows-side' in the display alist wins over the rules.
+A `side' belongs to the caller, says nothing here, and never reaches
+`display-buffer-in-side-window': the side and the slot of this package
+go first in the alist it builds."
   (with-temp-buffer
     (auto-side-windows-test--with-rules
         (auto-side-windows-bottom-buffer-modes '(fundamental-mode))
-      (should (eq (auto-side-windows--get-buffer-side (current-buffer) '((side . top)))
-                  'top)))))
+      (should (eq (auto-side-windows--get-buffer-side
+                   (current-buffer) '((auto-side-windows-side . top)))
+                  'top))
+      (should (eq (auto-side-windows--get-buffer-side (current-buffer)
+                                                      '((side . top)))
+                  'bottom))
+      (let ((alist (auto-side-windows--action-alist
+                    'bottom 0 '((side . above) (slot . 3)))))
+        (should (eq (alist-get 'side alist) 'bottom))
+        (should (eq (alist-get 'slot alist) 0))))))
 
 (ert-deftest auto-side-windows-test-free-slot ()
   "Without side windows the first slot is free, and detached buffers get none."

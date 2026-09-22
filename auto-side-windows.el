@@ -329,7 +329,19 @@ Set it as a file-local variable to pin a buffer to one side.
 buffer a reader sent to a side goes there again each time it is
 displayed.  A side that the rules chose is not written here: the rules
 answer again every time, and a buffer therefore follows a rule that
-changes.")
+changes.
+
+The name is also the action alist key that names a side for one
+display:
+
+    (display-buffer buffer \\='(auto-side-windows--display-buffer
+                            (auto-side-windows-side . right)))
+
+The key is this one and not `side', because `side' is each package's
+own word for a place on the frame: a side window to
+`display-buffer-in-side-window', a direction to
+`display-buffer-in-direction', a way to split to a package that splits
+for itself.")
 
 ;;;###autoload
 (put 'auto-side-windows-side 'safe-local-variable
@@ -391,17 +403,17 @@ of the kind `buffer-match-p' takes."
 
 (defun auto-side-windows--get-buffer-side (buffer &optional alist)
   "Return the side BUFFER goes to: top, bottom, left, right or detached.
-Nil where no rule matches, which leaves the buffer to Emacs.  A `side'
-in ALIST answers before the rules do, and ALIST is also passed to
-`buffer-match-p' for the conditions that ask for it."
+Nil where no rule matches, which leaves the buffer to Emacs.  ALIST is
+passed to `buffer-match-p' for the conditions that ask for it.
+
+The questions come in this order: an `auto-side-windows-side' in ALIST,
+the detached flag, `auto-side-windows-side' in the buffer, the rules of
+each side."
   (with-current-buffer buffer
     (cond
-     ;; Before the detached flag: a caller that names a side means it,
-     ;; and `detached' is no side to pass on to a side window.
-     ((assq 'side alist)
-      (alist-get 'side alist))
+     ((assq 'auto-side-windows-side alist)
+      (alist-get 'auto-side-windows-side alist))
      (auto-side-windows--detached 'detached)
-     ;; A file-local setting, or the side this buffer went to before.
      (auto-side-windows-side)
      (t (seq-find (lambda (side)
                     (buffer-match-p (auto-side-windows--side-condition side)
@@ -610,18 +622,19 @@ Nil where nothing was measured, or where the sizes are not remembered."
 
 (defun auto-side-windows--action-alist (side slot alist)
   "Return the action alist that displays a buffer in SLOT of SIDE.
-ALIST is the caller's.  The window parameters go in front of it, where
-everything else goes behind it: Emacs reads the first `window-parameters'
-it finds, so an entry of the caller's left the parameters of the side
-unset.  The parameters are set in the order of the list and the last of
-a name wins, so the caller's come last and win, as their side and their
-slot do.
+ALIST is the caller's, and Emacs reads the first entry of a name it
+finds.  SIDE and SLOT therefore go first: they are the answer of this
+package, and they carry the slot the caller asked for.  The window
+parameters follow as one entry — the common ones, the side's, then the
+caller's, which win, because the parameters are set in the order of the
+list.
 
 Behind ALIST the order is the order of the say: what the reader last
 resized beats the size option of the side, and that beats its action
 alist."
   (let ((side-size (auto-side-windows--side-option side 'size)))
     (append
+     `((side . ,side) (slot . ,slot))
      `((window-parameters
         . ,(append auto-side-windows-common-window-parameters
                    (auto-side-windows--side-option side 'parameters)
@@ -634,29 +647,23 @@ alist."
                      'window-height)
                    side-size)))
      auto-side-windows-common-alist
-     (auto-side-windows--side-option side 'alist)
-     `((side . ,side) (slot . ,slot)))))
+     (auto-side-windows--side-option side 'alist))))
 
 (defun auto-side-windows--display-buffer (buffer alist)
   "Display BUFFER in a side window, for `display-buffer-alist'.
-ALIST is the action alist of the display.  The side comes from a `side'
-in ALIST or from the rules, and the slot from a `slot' in ALIST or from
-`auto-side-windows--get-next-free-slot'.  Nil where no side answers:
-Emacs then displays the buffer the way it would without this package.
+ALIST is the action alist of the display.  The side comes from an
+`auto-side-windows-side' in ALIST or from the rules, and the slot from a
+`slot' in ALIST or from `auto-side-windows--get-next-free-slot'.  Nil
+where no side answers: Emacs then displays the buffer the way it would
+without this package.
 
-The sizes, the action alist and the window parameters of the side go in
-front of ALIST, `auto-side-windows-before-display-hook' runs, and
+`auto-side-windows-before-display-hook' runs, and
 `display-buffer-in-side-window' makes the window — or the window that
 already shows BUFFER is reused, unless the caller named a slot.
 
-The side is not written into the buffer here.  A side the rules chose
-is chosen again the next time, so a buffer follows the rules a reader
-changes; `auto-side-windows-side' is for the reader and for the
-commands that name a side.
-
-A reused window can be an ordinary one.  The buffer then went to no
-side, and `auto-side-windows-after-display-hook' does not run, because
-that hook is there to dress a side window."
+A reused window can be an ordinary one, and a side that allows no slot
+gives no window at all.  `auto-side-windows-after-display-hook' runs
+for neither: it is there to dress a side window."
   (let* ((side (auto-side-windows--get-buffer-side buffer alist))
          ;; A caller may name the slot, and one that does means it: the
          ;; buffer moves there even when a window already shows it.  That
@@ -767,8 +774,10 @@ WINDOW is selected."
     (auto-side-windows--measure nil)
     (delete-window window)
     (delete-window other)
-    (display-buffer mine `(nil . ((side . ,side) (slot . ,their-slot))))
-    (display-buffer theirs `(nil . ((side . ,side) (slot . ,my-slot))))
+    (display-buffer mine `(nil . ((auto-side-windows-side . ,side)
+                                  (slot . ,their-slot))))
+    (display-buffer theirs `(nil . ((auto-side-windows-side . ,side)
+                                    (slot . ,my-slot))))
     (when-let* ((now (get-buffer-window mine)))
       (set-window-start now start)
       (set-window-point now point)
@@ -835,7 +844,7 @@ After toggling the buffer, it runs `auto-side-windows-after-toggle-hook'."
         (with-current-buffer buffer
           (kill-local-variable 'auto-side-windows--detached))
         (switch-to-prev-buffer window 'bury)
-        (pop-to-buffer buffer `(nil . ((side . ,side))))))
+        (pop-to-buffer buffer `(nil . ((auto-side-windows-side . ,side))))))
      (t
       (user-error "Not in a side window, and detached from none")))
     (run-hook-with-args 'auto-side-windows-after-toggle-hook buffer)))
@@ -867,7 +876,7 @@ buffer and `auto-side-windows-after-display-hook' after."
       ;; A buffer sent to a side is detached no longer.
       (kill-local-variable 'auto-side-windows--detached)
       (setq-local auto-side-windows-side side))
-    (pop-to-buffer buffer `(nil . ((side . ,side))))))
+    (pop-to-buffer buffer `(nil . ((auto-side-windows-side . ,side))))))
 
 ;;;###autoload
 (defun auto-side-windows-display-buffer-top ()

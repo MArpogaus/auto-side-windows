@@ -31,10 +31,18 @@ that Emacs would take it without the package.
 =auto-side-windows--get-buffer-side= asks these questions, in this
 order:
 
-1. Does the action alist name a side?  The commands
+1. Does the action alist name a side?  The key is
+   =auto-side-windows-side=, which the commands
    =auto-side-windows-display-buffer-top= and its three siblings put
-   the side there.  A caller that names a side means it, and it is
-   asked first: =detached= is no side to hand on to a side window.
+   there.  A caller that names a side means it, and it is asked first:
+   =detached= is no side to hand on to a side window.
+
+   The key is the package's own, and not =side=, because the entry
+   above offers this package every buffer Emacs displays, and =side=
+   in an action alist is each package's own word for a place on the
+   frame: a side window to =display-buffer-in-side-window=, a
+   direction to =display-buffer-in-direction=, a way to split to a
+   package that splits for itself.
 2. Is the buffer detached?  =auto-side-windows-toggle-side-window=
    sets =auto-side-windows--detached= in the buffer.  The buffer then
    goes to an ordinary window.
@@ -99,12 +107,13 @@ its own therefore needs no bookkeeping in this package.
 - the action alist: the common one and the one of the side
 - the side and the slot
 
-The parameters go into one =window-parameters= entry in front of the
-action alist of the caller.  Emacs reads the first such entry it finds
-and no other, so an entry of the caller's left the parameters of the
-side unset.  It sets them in the order of the list, where the last of
-a name wins, so the caller's come last: theirs win, as their side and
-their slot do.
+Emacs reads the first entry of a name it finds and no other.  The side
+and the slot therefore go first: they are the answer of this package,
+and they carry the slot the caller asked for.  The parameters follow in
+one =window-parameters= entry, in front of the alist of the caller,
+and they are set in the order of the list, where the last of a name
+wins: the common ones, the ones of the side, then the caller's, which
+win.
 
 =auto-side-windows--side-options= names every option of a side: its
 window parameters, its action alist, its size, and the three rules that
