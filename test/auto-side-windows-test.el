@@ -83,9 +83,8 @@ RULES is a plist of customization symbols and values."
 
 (ert-deftest auto-side-windows-test-side-from-variable ()
   "The buffer-local side overrides the rules, and a detached buffer has none.
-Both are plain values, so declaring them must not make every buffer
-match; that is what the checks in `auto-side-windows--get-buffer-side'
-guard against."
+Both are plain values, so a buffer that declares neither must match
+neither."
   (with-temp-buffer
     (setq-local auto-side-windows-side 'left)
     (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'left))
@@ -129,13 +128,11 @@ go first in the alist it builds."
 (ert-deftest auto-side-windows-test-a-full-side-answers-a-slot-that-is-there ()
   "A full side answers with the slot of a window that is there.
 `window-sides-slots' counts every window of the side, a caller's
-negative slot among them.  A full side splits no window: Emacs reuses
-the one nearest the slot it is handed, so a free slot number sent it to
-any window of the side — measured with a limit of two and a caller's
-window at slot -1, the buffer took that window.  The highest slot at or
-above zero makes the reuse an exact match and leaves the negative slots
-alone."
-  ;; under the limit: the lowest free slot, as before
+negative slot among them, and a full side splits no window: Emacs
+reuses the one nearest the slot it is handed.  The highest slot at or
+above zero makes that reuse an exact match and leaves the negative
+slots alone."
+  ;; under the limit: the lowest free slot
   (should (equal (auto-side-windows--lowest-free-slot nil 2) 0))
   (should (equal (auto-side-windows--lowest-free-slot '(0) 2) 1))
   (should (equal (auto-side-windows--lowest-free-slot '(0 2) nil) 1))
@@ -156,11 +153,8 @@ alone."
 
 (ert-deftest auto-side-windows-test-display-on-side-outside-side-window ()
   "Displaying on a side works from a normal window.
-The command used to reference an unbound variable on this path."
-  ;; With the mode, as the package is used: it puts one entry into
-  ;; `display-buffer-alist', and that entry is what reads the side out
-  ;; of the action alist.  Without the mode, Emacs decides where the
-  ;; buffer goes and the side is nobody's business.
+With the mode on, because its entry in `display-buffer-alist' is what
+reads the side out of the action alist."
   (auto-side-windows-mode 1)
   (unwind-protect
       (with-temp-buffer
@@ -174,9 +168,8 @@ The command used to reference an unbound variable on this path."
 
 (ert-deftest auto-side-windows-test-reused-plain-window-runs-no-hook ()
   "A buffer already on screen in an ordinary window stays ordinary.
-The window is reused as documented, but the buffer went to no side, so
-the after-display hook must not run: it is there to dress a side
-window."
+The window is reused, the buffer goes to no side, and the after-display
+hook does not run: it is there to dress a side window."
   (let* ((buffer (get-buffer-create "*auto-side-windows-test*"))
          (auto-side-windows-right-buffer-modes '(help-mode))
          (auto-side-windows-after-display-hook nil)
@@ -205,8 +198,8 @@ window."
 
 (ert-deftest auto-side-windows-test-side-options-cover-each-side ()
   "Every side names an option for every part it has.
-The names are written out, so a side that gains an option and forgets
-the table is a test failure and not a nil at display time."
+A side that gains an option and forgets the table fails here, rather
+than answering nil at display time."
   (dolist (side '(top bottom left right))
     (let ((parts (alist-get side auto-side-windows--side-options)))
       (should parts)
@@ -365,18 +358,17 @@ header line is the reader's to write."
 
 (ert-deftest auto-side-windows-test-a-slot-keeps-its-size ()
   "The size a reader gave a slot stays with the slot, not with the buffer.
-The windows are deleted and displayed again, which would give the side
-its configured sizes back and undo the hand of the reader."
+The move deletes both windows and displays the buffers again, and the
+slot still has the height the reader gave it."
   (auto-side-windows-test--with-sides
     (let ((auto-side-windows-remember-sizes t)
           (one (auto-side-windows-test--side-window a 'left 0)))
       (auto-side-windows-test--side-window b 'left 3)
-      ;; The redisplay that would have counted the two windows.
+      ;; the redisplay that counts the two windows
       (auto-side-windows--measure nil)
       (when (window-resizable one 4)
         (window-resize one 4 nil t)
-        ;; No redisplay here, and none needed: the swap measures the
-        ;; windows before it deletes them.
+        ;; no redisplay needed: the swap measures before it deletes
         (let ((tall (window-total-height one)))
           (select-window one)
           (auto-side-windows-move-to-next-slot)
@@ -388,10 +380,9 @@ its configured sizes back and undo the hand of the reader."
                      tall)))))))
 (ert-deftest auto-side-windows-test-measure-keeps-what-a-reader-set ()
   "A resize is measured; a window that goes does not spoil the measurement.
-A window that is deleted gives its lines to a sister, and measuring that
-would keep a size nobody asked for.  The first look at a side records
-its count and no size: a new window has the size its caller asked for,
-which is not the reader's."
+A deleted window gives its lines to a sister, and that size is nobody's.
+The first look at a side records its count and no size: a new window
+has the size its caller asked for, which is not the reader's."
   (auto-side-windows-test--with-sides
     (let ((auto-side-windows-remember-sizes t)
           (one (auto-side-windows-test--side-window a 'left 0)))
@@ -448,9 +439,8 @@ as it was and not to the nearest line."
 
 (ert-deftest auto-side-windows-test-measure-takes-the-frame-it-is-given ()
   "The frame `window-size-change-functions' names is the frame measured.
-A size change on a frame that is not selected would otherwise be written
-against the tab of the selected one, and the frame that changed would
-give nothing back."
+Its windows are read and its tab is written, whichever frame is
+selected."
   (let ((auto-side-windows-remember-sizes t)
         (tab-bar-tabs-function nil)
         frames tabs)
@@ -473,10 +463,9 @@ give nothing back."
 
 (ert-deftest auto-side-windows-test-a-buffer-follows-the-rules ()
   "A side the rules chose is not written into the buffer.
-The buffer-local side answers before the rules do, so a buffer that
-kept the side it went to first never saw a rule the reader changed
-afterwards.  A side that a command names is kept, and it puts such a
-buffer on that side each time it is displayed."
+The buffer-local side answers before the rules do, so a buffer keeps
+none of its own and follows a rule the reader changes.  A side a
+command names is kept, and puts the buffer there each time."
   (auto-side-windows-test--with-sides
     (let ((auto-side-windows-left-buffer-names '("\\`\\*slot")))
       (auto-side-windows--display-buffer a nil)
@@ -492,9 +481,8 @@ buffer on that side each time it is displayed."
 (ert-deftest auto-side-windows-test-the-caller-adds-window-parameters ()
   "The parameters of a caller come on top of those of the side.
 Emacs reads the first `window-parameters' of the action alist and no
-other, so an entry of the caller's left the parameters of the side
-unset.  They are set in the order of the list, and the caller's come
-last: theirs win where both name one, as their side and their slot do."
+other, so the three lists are one entry, set in the order of the list:
+the common ones, the side's, then the caller's, which win."
   (auto-side-windows-test--with-sides
     (let* ((auto-side-windows-common-window-parameters '((no-other-window . t)))
            (auto-side-windows-left-window-parameters
@@ -513,17 +501,15 @@ last: theirs win where both name one, as their side and their slot do."
 
 (ert-deftest auto-side-windows-test-the-toggle-goes-both-ways ()
   "The toggle takes a buffer out of its side window, and back into it.
-No rule of the package names this buffer: the mark holds the side the
-buffer came from, and that is what takes it back.  A buffer that is in
-no side window and was detached from none has nowhere to go, and the
-command says so rather than doing nothing."
+No rule of the package names this buffer: the mark holds the side it
+came from, and that is what takes it back.  A buffer in no side window
+and detached from none has nowhere to go, and the command says so."
   (auto-side-windows-test--with-sides
     (select-window (auto-side-windows-test--side-window a 'left 0))
     (auto-side-windows-toggle-side-window)
     (should (eq (buffer-local-value 'auto-side-windows--detached a) 'left))
     (should-not (window-parameter (get-buffer-window a) 'window-side))
-    ;; the reader stays with the buffer, here and now: a selection left
-    ;; to `post-command-hook' never happens for a call from Lisp
+    ;; the reader stays with the buffer, here and now
     (should (eq (window-buffer) a))
     ;; and back to the side it came from
     (auto-side-windows-toggle-side-window)

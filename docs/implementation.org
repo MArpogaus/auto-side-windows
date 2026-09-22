@@ -81,11 +81,11 @@ window that it can reuse:
 A side that holds as many windows as =window-sides-slots= allows is
 full, whatever slots those windows sit in.  Emacs splits no window on a
 full side: it reuses the window whose slot lies nearest the one it is
-handed.  A free slot number can then point at any window of the side —
-measured with a limit of two and a caller's window at slot -1, the new
-buffer took that window.  The function therefore returns the highest
-slot at or above zero of the windows that are there.  The reuse is an
-exact match, and the new buffer replaces the buffer of the last slot.
+handed, and a free slot number can point at any window of the side.
+The function therefore returns the highest slot at or above zero of the
+windows that are there: the reuse is an exact match, the new buffer
+replaces the buffer of the last slot, and a negative slot is left
+alone.
 
 A caller can name the slot instead, with a =slot= in the action alist.
 =auto-side-windows--display-buffer= then takes that number and skips the
@@ -130,13 +130,10 @@ there to dress a side window, and an ordinary window is not one.
 * The geometry of a side
 
 The size of a side window is given when the window is made, from the
-action alist that `display-buffer-in-side-window' receives.  Nothing
-keeps it afterwards, so a window that goes and comes back is made with
-the configured size again.  Measured before this section existed: a
-hand resized left side of 29 columns with slots of 22 and 13 lines came
-back as 17 and 17 after its slot was deleted and displayed again.
-
-Three parts hold it now.
+action alist that =display-buffer-in-side-window= receives, and Emacs
+keeps nothing afterwards.  Three parts of this package hold it, so that
+a window which goes and comes back is made with the size the reader
+gave it.
 
 =auto-side-windows--geometry= and its setter keep an alist of
 =(SIDE SIZE COUNT SLOTS)= in the current tab.  A tab is where Emacs
@@ -154,23 +151,18 @@ show, and the package needs no second place to put them.
 
 =auto-side-windows--measure= runs from
 =window-size-change-functions=, which names the frame whose windows
-changed.  That frame is the one measured, and not the selected one: a
-side window resized on a second frame would otherwise be written against
-the tab of the frame in front.  Measured with the old code, a top window
-of 22 lines on the frame that was not selected left an empty record and
-came back at the 10 lines of its option.
+changed.  That frame is the one measured, and not the selected one, so
+that a side window resized on a second frame is written against the tab
+of that frame.
 
-It measures a side only while the side
-has as many windows as it had when it was measured last.  A window that
-goes gives its lines to a sister, and measuring then would keep a size
-nobody asked for; a reader who resizes a window changes no count.  The
-first look at a side counts its windows and measures nothing: a new
-window has the size its caller asked for, and =display-warning= asks for
-a window that fits its text.  Measured before this rule existed: a
-=*Warnings*= of nine lines on the top made every top window nine lines
-tall from then on, where the option said fifteen.  The commands that
-delete a side window measure first, because a redisplay may not have
-happened since the reader resized.
+It measures a side only while the side has as many windows as it had
+when it was measured last.  A window that goes gives its lines to a
+sister, and that size is nobody's; a reader who resizes a window
+changes no count.  The first look at a side counts its windows and
+measures nothing: a new window has the size its caller asked for, and
+=display-warning= asks for a window that fits its text.  The commands
+that delete a side window measure first, because a redisplay may not
+have happened since the reader resized.
 
 The sizes are pixels, and the entries that give them back are functions
 that call =window-resize= pixelwise.  A window resized pixelwise, as it
@@ -260,18 +252,14 @@ leave and none to go back to.  The command says so with a
 that sends such a buffer to a side.
 
 Both directions go through =pop-to-buffer=, so the reader stays with
-the buffer wherever it went.  A =display-buffer= with
-=post-command-select-window= did this before, and it did it only for a
-command: the selection waits for =post-command-hook=, which a call from
-Lisp never reaches, and the demo's second toggle worked by accident,
-because the current buffer had stayed the help buffer while the selected
-window showed something else.
+the buffer wherever it went, from a command and from Lisp alike: a
+=post-command-select-window= waits for =post-command-hook=, which a
+call from Lisp never reaches.
 
-The command acts on the buffer of the selected window.  For a command
-that is the current buffer; a call from Lisp may have made another
-buffer current, and the window it would have deleted was then the wrong
-one.  =auto-side-windows-display-buffer-on-side= leaves the selected
-window alone for the same reason unless it shows the buffer being sent.
+The command acts on the buffer of the selected window, which for a
+command is the current buffer, and from Lisp need not be.
+=auto-side-windows-display-buffer-on-side= leaves the selected window
+alone unless it shows the buffer being sent.
 
 * Known cost
 

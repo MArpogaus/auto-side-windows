@@ -368,12 +368,26 @@ Give the binding a part of the header line that has no other use, a
 stretch of space between the name and the buttons for example: the
 buttons keep their own keymaps.
 
-A caller can name the slot itself, because the rules of this package are
-display actions: a =(slot . N)= in the action alist of a =display-buffer=
-call puts the buffer in slot =N=, whatever the rules would have picked.
-The search for a free slot counts up from zero, so a negative slot is one
-no other buffer is ever given.  =dirvish-side= asks for slot -1 and keeps
-it to itself that way, without a rule of ours.
+A caller can name the side and the slot itself, because the rules of
+this package are display actions:
+
+#+begin_src emacs-lisp
+  (display-buffer buffer '(auto-side-windows--display-buffer
+                           (auto-side-windows-side . right)
+                           (slot . 1)))
+#+end_src
+
+=auto-side-windows-side= names the side, whatever the rules say, and
+=slot= names the slot.  The key is this package's own, and not the
+=side= of an action alist, because =side= is each package's own word
+for a place on the frame: a side window to
+=display-buffer-in-side-window=, a direction to
+=display-buffer-in-direction=, a way to split to a package that splits
+for itself.
+
+The search for a free slot counts up from zero, so a negative slot is
+one no other buffer is ever given.  =dirvish-side= asks for slot -1 and
+keeps it to itself that way, without a rule of ours.
 
 ** Integration with Other Packages
 
@@ -509,9 +523,9 @@ name a side.
 
 ** Bonus: Boxes around side windows
 
-The recipe that used to live here is a package now.  [[https://github.com/MArpogaus/window-box][window-box]] draws
-a box around a window and keeps what your mode line and your header
-line show.  One hook boxes each buffer that goes to a side window:
+[[https://github.com/MArpogaus/window-box][window-box]] draws a box around a window and keeps what your mode line
+and your header line show.  One hook boxes each buffer that goes to a
+side window:
 
 #+begin_src emacs-lisp
   (add-hook 'auto-side-windows-after-display-hook
