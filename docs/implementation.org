@@ -180,11 +180,12 @@ in =auto-side-windows--resized= when one of two things holds:
   is a command of its own, an anonymous closure of the drag's transient
   map, so no command name finds it.
 
-The next measurement takes the mark off, and each command sets it anew.
+The next measurement takes the mark off.  The next command that is no
+resize takes it off as well, except a mouse event: the release that
+ends a drag can come before the redisplay that measures its last move.
 A size change that a timer or a process makes after that is not the
 reader's, though =last-command= still names the resize until the next
-key.  A mark that no size change took off, after a drag that selected
-text or a resize that failed, lasts until the next command.
+key.
 
 Measured with a function on =window-size-change-functions=: a transient
 menu that fits its window reports =magit-dispatch= and the key =?=, a

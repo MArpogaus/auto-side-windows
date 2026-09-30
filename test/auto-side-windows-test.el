@@ -300,7 +300,9 @@ SNAPSHOT."
             ((symbol-function 'window-pixel-height-before-size-change)
              (lambda (window) (or (nth 2 (assq window snapshot)) 0))))
     (let ((auto-side-windows--resized t))
-      (auto-side-windows--measure nil))))
+      (auto-side-windows--measure nil)
+      ;; the measurement takes the mark off
+      (should-not auto-side-windows--resized))))
 
 (defun auto-side-windows-test--side-window (buffer side slot)
   "Show BUFFER in a side window on SIDE in SLOT, and return the window."
@@ -469,6 +471,7 @@ comes later, from a timer or a process, is not the reader's either."
 
 (ert-deftest auto-side-windows-test-a-resize-is-noted-after-its-command ()
   "A resize command and a drag mark a resize, any other command clears it.
+A mouse event is the exception: the release that ends a drag keeps it.
 A drag runs each move of the mouse as a command without a name, so its
 event is what tells."
   (let ((auto-side-windows--resized nil)
@@ -517,7 +520,7 @@ the bottom side is between them."
         (should (= (alist-get 'size (alist-get 'right geometry))
                    (window-pixel-width right)))
         (should-not (alist-get 'size (alist-get 'bottom geometry)))
-        ;; and the width of the one bottom window is the frame's to say
+        ;; nor its width: the right side changed the length of the bottom
         (should-not (alist-get 'slots (alist-get 'bottom geometry)))))))
 
 (ert-deftest auto-side-windows-test-a-slot-length-is-kept-within-its-side ()

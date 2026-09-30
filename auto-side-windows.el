@@ -535,7 +535,8 @@ cannot hold any more, after the frame shrank, gives as much as fits."
 `auto-side-windows--note-resize' sets it after a command, and the next
 measurement takes it off, so a size change that a timer or a process
 makes later is not the reader's.  A resize command that changed no size
-causes no measurement, and the next command takes the mark off.")
+causes no measurement, and the next command that is no mouse event
+takes the mark off.")
 
 (defun auto-side-windows--note-resize ()
   "Note whether the reader resized, for `post-command-hook'.
