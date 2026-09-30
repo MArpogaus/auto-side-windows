@@ -273,7 +273,7 @@ all:
 | =auto-side-windows-toggle-side-window=                | move the buffer out of its side window, and back    |
 | =auto-side-windows-display-buffer-{top,bottom,left,right}= | show the buffer on that side, whatever the rules say |
 | =auto-side-windows-display-buffer-on-side=            | the same, and ask for the side in the minibuffer    |
-| =auto-side-windows-switch-to-buffer=                  | switch to a buffer that is in a side window         |
+| =auto-side-windows-switch-to-buffer=                  | switch to a buffer that belongs to a side           |
 | =auto-side-windows-move-to-{next,previous}-slot=       | move the buffer along its side, slot for slot       |
 | =auto-side-windows-drag-slot=                          | the same with the mouse, from a header line          |
 
@@ -361,7 +361,7 @@ line of your side windows, on the *press* rather than the drag:
 #+begin_src emacs-lisp
   (defvar my-side-window-drag-map
     (let ((map (make-sparse-keymap)))
-      (define-key map [header-line down-mouse-1] #'auto-side-windows-drag-slot)
+      (keymap-set map "<header-line> <down-mouse-1>" #'auto-side-windows-drag-slot)
       map))
 
   ;; somewhere in the header line of a side window
@@ -394,9 +394,11 @@ this package are display actions:
 key is not the =side= of an action alist, because other packages use
 =side= for their own purposes.
 
-The search for a free slot counts up from zero, so a negative slot is
-one no other buffer is ever given.  =dirvish-side= asks for slot -1 and
-keeps it to itself that way, without a rule of this package.
+The search for a free slot counts up from zero, so it never gives a
+buffer a negative slot.  =dirvish-side= asks for slot -1 and keeps it
+that way, without a rule of this package.  The one exception is
+=auto-side-windows-reuse-mode-window=: it reuses a window of the same
+major mode, whatever its slot.
 
 ** Integration with Other Packages
 
@@ -465,9 +467,9 @@ Add =ace-display-buffer= to =display-buffer-base-action=:
 #+begin_src emacs-lisp
   (use-package ace-window
     :custom
-    (display-buffer-base-action '(display-buffer-reuse-mode-window
-                                  display-buffer-in-previous-window
-                                  ace-display-buffer))) ; Ask user via ace-window
+    (display-buffer-base-action '((display-buffer-reuse-mode-window
+                                   display-buffer-in-previous-window
+                                   ace-display-buffer)))) ; Ask user via ace-window
 #+end_src
 
 A buffer that matches no rule, and that Emacs cannot put into a

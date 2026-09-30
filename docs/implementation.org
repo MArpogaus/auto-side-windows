@@ -100,9 +100,10 @@ names a slot means that slot.  That is how a buffer changes slot without
 anyone setting the buffer of a window: see moving a buffer along a side.
 
 The search counts up from zero and never returns a negative slot, so a
-caller that asks for one keeps it: =dirvish-side= displays itself in slot
--1, and no buffer that this package places can land there.  A buffer that needs a slot of
-its own therefore needs no bookkeeping in this package.
+caller that asks for one keeps it.  =dirvish-side= displays itself in
+slot -1, and the search gives that slot to no other buffer.  The reuse
+of a window of the same major mode is the exception: it takes the
+window whatever its slot.
 
 * The display
 
@@ -179,9 +180,11 @@ in =auto-side-windows--resized= when one of two things holds:
   is a command of its own, an anonymous closure of the drag's transient
   map, so no command name finds it.
 
-The next measurement takes the mark off.  A size change that a timer or
-a process makes after that is not the reader's, though =last-command=
-still names the resize until the next key.
+The next measurement takes the mark off, and each command sets it anew.
+A size change that a timer or a process makes after that is not the
+reader's, though =last-command= still names the resize until the next
+key.  A mark that no size change took off, after a drag that selected
+text or a resize that failed, lasts until the next command.
 
 Measured with a function on =window-size-change-functions=: a transient
 menu that fits its window reports =magit-dispatch= and the key =?=, a
@@ -195,7 +198,11 @@ A marked measurement records only the sizes that changed since the last
 redisplay, as =window-pixel-width-before-size-change= and its sibling
 tell.  A wider right side makes a bottom window between the sides
 narrower, and the height a caller fitted that window to stays out of
-the record.
+the record.  A side of one window records no slot size at all: its
+length is what the frame and the other sides leave it.
+
+A remembered size that the frame cannot hold any more gives as much as
+fits, through =window-resizable=.
 
 The sizes are pixels, and the entries that give them back are functions
 that call =window-resize= pixelwise.  A window resized pixelwise, as it
@@ -222,15 +229,16 @@ reader's hand still moves it.
 
 =auto-side-windows--sizes= turns a record into the two entries of an
 action alist: the size of the side, a width for a left or a right side
-and a height for a top or a bottom one, and the size of the slot across
-it.  =auto-side-windows--action-alist= puts them behind the alist of
+and a height for a top or a bottom one, and the size of the slot along
+the side.  =auto-side-windows--action-alist= puts them behind the alist of
 the caller, so Emacs applies them when it makes the window.
 
 The order of that alist is the order of priority, because
 =display-buffer-in-side-window= reads the first entry it finds: the
 alist of the caller comes first, then what the reader last resized, then
-the size option of the side, then the action alist of the side.  Nothing is taken out of the alist of a
-side; a size left in it applies where the option is empty.
+the size option of the side, then the action alist of the side, then
+the common action alist.  Nothing is taken out of the alist of a side:
+a size left in it applies where the option is empty.
 
 * Moving a buffer along a side
 
@@ -305,7 +313,8 @@ one entry that asks its own questions.
 =make test= runs the batch suite in
 =test/auto-side-windows-test.el=.  It tests:
 
-- the side of a buffer, for each of the four questions above
+- the side of a buffer, for each of the four questions above, and that
+  the side a reader gave a buffer outlives a new major mode
 - the condition that the rules of a side make
 - the free slot of an empty side, and the slot of a window that is
   there for a full side
@@ -316,6 +325,9 @@ one entry that asks its own questions.
 - that a command sends a buffer to a side with the mode off, and out of
   an ordinary window that shows it
 - the window parameters of a caller, over the ones of the side
+- that an ordinary window that shows a buffer is reused without the
+  after-display hook, and that a command called from Lisp leaves the
+  windows of other buffers alone
 - the toggle, in both directions, that the reader stays with the buffer,
   and where there is nothing to toggle
 - the entry in =display-buffer-alist=, after the mode goes on and off
@@ -325,8 +337,9 @@ one entry that asks its own questions.
 - the drag, and that it does nothing across two sides, into an ordinary
   window, or where it began
 - that the package binds no key
-- the measurement: a resize command and a drag are measured, a window
-  that fits itself and a window that goes are not, and the frame it is
+- the measurement: a resize command and a drag are marked, a marked
+  measurement records only the sizes that changed, a window that fits
+  itself and a window that goes are not measured, and the frame it is
   given is the frame it reads
 - that the size along a side is preserved, holds when a window closes
   under =window-combination-resize=, and is preserved again after a

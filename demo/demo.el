@@ -162,8 +162,10 @@
     (select-window window)
     (demo--say "make it wider" 1.5)
     (dotimes (_ 10)
-      (when (window-resizable window -1 t)
-        (window-resize window -1 t t))
+      (enlarge-window-horizontally 1)
+      ;; what the command loop does after a resize command
+      (let ((this-command 'enlarge-window-horizontally))
+        (auto-side-windows--note-resize))
       (demo--hold 0.1))
     (demo--hold 1.5)
     (demo--say "the side is gone, and comes back as you left it" 2.0)

@@ -116,6 +116,21 @@ go first in the alist it builds."
         (should (eq (alist-get 'side alist) 'bottom))
         (should (eq (alist-get 'slot alist) 0))))))
 
+(ert-deftest auto-side-windows-test-the-side-alist-beats-the-common-one ()
+  "An entry of the action alist of a side wins over the common one.
+The window parameters go the same way: the side's win."
+  (let ((auto-side-windows-common-alist '((dedicated . t)))
+        (auto-side-windows-left-alist '((dedicated . nil))))
+    (should-not (alist-get 'dedicated
+                           (auto-side-windows--action-alist 'left 0 nil)
+                           'absent))))
+
+(ert-deftest auto-side-windows-test-no-side-no-move ()
+  "An empty answer to the side prompt moves nothing and says so."
+  (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "")))
+    (should-error (call-interactively #'auto-side-windows-display-buffer-on-side)
+                  :type 'user-error)))
+
 (ert-deftest auto-side-windows-test-free-slot ()
   "Without side windows the first slot is free."
   (with-temp-buffer
@@ -416,7 +431,7 @@ comes later, from a timer or a process, is not the reader's either."
                        slots))))))
 
 (ert-deftest auto-side-windows-test-a-resize-is-noted-after-its-command ()
-  "A resize command and a drag mark a resize, any other command does not.
+  "A resize command and a drag mark a resize, any other command clears it.
 A drag runs each move of the mouse as a command without a name, so its
 event is what tells."
   (let ((auto-side-windows--resized nil)
@@ -427,7 +442,11 @@ event is what tells."
     (let ((this-command 'enlarge-window))
       (auto-side-windows--note-resize))
     (should auto-side-windows--resized)
-    (setq auto-side-windows--resized nil)
+    ;; the next command that is no resize takes a mark back that no
+    ;; size change took off
+    (let ((this-command 'forward-char))
+      (auto-side-windows--note-resize))
+    (should-not auto-side-windows--resized)
     (let ((this-command (lambda () (interactive)))
           (last-input-event '(mouse-movement (nil))))
       (auto-side-windows--note-resize))
@@ -437,6 +456,8 @@ event is what tells."
   "A resize records the sizes that changed and keeps the others.
 A wider right side makes a bottom window narrower, and its height is
 still the one the caller fitted it to: that height is not the reader's.
+Nor is its width: a side of one window has the length the frame and the
+other sides leave it.
 The left and the right side run the full height of the frame here, so
 the bottom side is between them."
   (auto-side-windows-test--with-sides
@@ -461,8 +482,8 @@ the bottom side is between them."
         (should (= (alist-get 'size (alist-get 'right geometry))
                    (window-pixel-width right)))
         (should-not (alist-get 'size (alist-get 'bottom geometry)))
-        (should (= (alist-get 0 (alist-get 'slots (alist-get 'bottom geometry)))
-                   (window-pixel-width bottom)))))))
+        ;; and the width of the one bottom window is the frame's to say
+        (should-not (alist-get 'slots (alist-get 'bottom geometry)))))))
 
 (ert-deftest auto-side-windows-test-sizes-name-the-right-side ()
   "The size of a side and the size of a slot are the two directions.
@@ -491,8 +512,12 @@ as it was and not to the nearest line."
     (let* ((window (auto-side-windows-test--side-window a 'left 0))
            (wanted (+ (window-pixel-width window) (* 3 (frame-char-width)))))
       (skip-unless (window-resizable window 3 t))
-      (funcall (cdr (car (auto-side-windows--size t 'along wanted))) window)
-      (should (= (window-pixel-width window) wanted)))))
+      (funcall (cdr (car (auto-side-windows--size wanted t))) window)
+      (should (= (window-pixel-width window) wanted))
+      ;; a size the frame cannot hold gives as much as fits
+      (funcall (cdr (car (auto-side-windows--size (* 10 (frame-pixel-width)) t)))
+               window)
+      (should (> (window-pixel-width window) wanted)))))
 
 (ert-deftest auto-side-windows-test-measure-takes-the-frame-it-is-given ()
   "The frame `window-size-change-functions' names is the frame measured.
@@ -571,6 +596,12 @@ came from, and that is what takes it back.  A buffer in no side window
 and detached from none has nowhere to go, and the command says so."
   (auto-side-windows-test--with-sides
     (select-window (auto-side-windows-test--side-window a 'left 0))
+    (let ((ordinary (length (window-list))))
+      (auto-side-windows-toggle-side-window)
+      (auto-side-windows-toggle-side-window)
+      ;; a window the way out made goes on the way back
+      (should (= (length (window-list)) ordinary)))
+    (select-window (get-buffer-window a))
     (auto-side-windows-toggle-side-window)
     (should (eq (buffer-local-value 'auto-side-windows--detached a) 'left))
     (should-not (window-parameter (get-buffer-window a) 'window-side))

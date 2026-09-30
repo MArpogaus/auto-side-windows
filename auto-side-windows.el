@@ -154,8 +154,8 @@ See `auto-side-windows-top-window-parameters'."
 
 (defcustom auto-side-windows-top-alist nil
   "Action alist entries for top side windows.
-The entries apply when a buffer is displayed in a top side window,
-after `auto-side-windows-common-alist'.  The height of a window belongs
+The entries apply when a buffer is displayed in a top side window, and
+they win over `auto-side-windows-common-alist'.  The height of a window belongs
 to `auto-side-windows-top-height', which wins over a `window-height'
 here."
   :type 'alist
@@ -272,9 +272,9 @@ ones a side window usually wants."
 
 (defcustom auto-side-windows-common-alist nil
   "Action alist entries for all side windows.
-The entries apply to every side window `auto-side-windows-mode' makes,
-before those of the side.  The size of a side belongs to the option of
-that side, which wins over a size here."
+The entries apply to every side window `auto-side-windows-mode' makes.
+The entries of the side win over them, and the size option of the side
+wins over a size here."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -303,7 +303,7 @@ does not run for it."
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-before-toggle-hook nil
-  "Hook run before `auto-side-windows-toggle-side-window' moves a buffer.
+  "Hook run at each call of `auto-side-windows-toggle-side-window'.
 Each function is called with the buffer."
   :type 'hook
   :group 'auto-side-windows)
@@ -321,9 +321,9 @@ Each function is called with the buffer."
 Set it as a file-local variable to pin a buffer to one side.
 A display that names a side sets it as well, so a buffer that a reader
 or a caller sent to a side goes there again each time it is displayed,
-by whatever route.  A side that the rules chose is not written here: the rules
-answer again every time, and a buffer therefore follows a rule that
-changes.
+by whatever route.  A side that the rules chose is not written here:
+the rules answer again every time, and a buffer therefore follows a
+rule that changes.
 
 The name is also the action alist key that names the side of a display,
 and the display writes the side it names here:
@@ -458,8 +458,9 @@ alone.  A full side of negative slots only answers with the free slot."
 
 (defun auto-side-windows--get-next-free-slot (side buffer)
   "Return the slot number to display BUFFER in on SIDE.
-Slots are numbered from zero, and this never returns a negative one, so
-a slot a caller asks for below zero stays that caller's own.
+Slots are numbered from zero, and the search for a free slot never
+returns a negative one, so a slot a caller asks for below zero stays that
+caller's own.  A window reused for its major mode can have one.
 
 Side windows showing a buffer with the same major mode as BUFFER are
 reused when `auto-side-windows-reuse-mode-window' is non-nil for SIDE;
@@ -488,7 +489,9 @@ in that variable means no limit."
   "Return the geometry of the current tab of FRAME, or of the selected one.
 The value is an alist of (SIDE SIZE SLOTS), where SIZE is the width of a
 left or a right side and the height of a top or a bottom one, and SLOTS
-is an alist of slot number to the size across the side.
+is an alist of slot number to the size of that slot along the side: the
+height of a slot of a left or a right side, the width of a slot of a top
+or a bottom one.
 
 There is a current tab whether or not `tab-bar-mode' is on, because
 `tab-bar-tabs' makes one; a frame without tabs therefore keeps its
@@ -520,26 +523,31 @@ from.  On a text terminal a pixel is a character."
   "Return a function that gives its window SIZE pixels, HORIZONTAL or not.
 A `window-height' or `window-width' entry of an action alist takes a
 function of the window, and `display-buffer' calls it once the window is
-made; a number there is a number of lines."
+made; a number there is a number of lines or columns.  A size the frame
+cannot hold any more, after the frame shrank, gives as much as fits."
   (lambda (window)
-    (window-resize window
-                   (- size (auto-side-windows--window-size window horizontal))
-                   horizontal nil t)))
+    (let ((delta (- size (auto-side-windows--window-size window horizontal))))
+      (window-resize window (window-resizable window delta horizontal nil t)
+                     horizontal nil t))))
 
 (defvar auto-side-windows--resized nil
   "Non-nil when the reader resized and the sides are not measured yet.
 `auto-side-windows--note-resize' sets it after a command, and the next
 measurement takes it off, so a size change that a timer or a process
-makes later is not the reader's.")
+makes later is not the reader's.  A resize command that changed no size
+causes no measurement, and the mark then waits for the next one.")
 
 (defun auto-side-windows--note-resize ()
-  "Note a resize by the reader, for `post-command-hook'.
+  "Note whether the reader resized, for `post-command-hook'.
+Each command sets the mark anew, so a mark no size change took off lasts
+until the next command, and no longer.
 A resize is the reader's when the command is one of
 `auto-side-windows-resize-commands', or when the event is a move of the
 mouse, which only a drag makes a size change of."
-  (when (or (memq this-command auto-side-windows-resize-commands)
-            (mouse-movement-p last-input-event))
-    (setq auto-side-windows--resized t)))
+  (setq auto-side-windows--resized
+        (and (or (memq this-command auto-side-windows-resize-commands)
+                 (mouse-movement-p last-input-event))
+             t)))
 
 (defun auto-side-windows--changed-size (window horizontal)
   "Return the width of WINDOW if HORIZONTAL, else its height, if it changed.
@@ -553,16 +561,17 @@ Nil when the size is the one the last redisplay saw."
 (defun auto-side-windows--measured (windows across entry)
   "Return the record of a side of WINDOWS; ACROSS when its size is a width.
 ENTRY is the record the side had.  A size that did not change keeps
-what ENTRY says: a resize of one side changes the other sides in one
-direction at most, and the other direction is not the reader's.  A slot
-that is empty now keeps the size it had when it was last shown."
+what ENTRY says.  A side of one window has no slot size of its own: the
+frame and the other sides decide its length, so it is not recorded.  A
+slot that is empty now keeps the size it had when it was last shown."
   (let ((size (auto-side-windows--changed-size (car windows) across))
-        (measured (delq nil (mapcar
-                             (lambda (window)
-                               (when-let* ((size (auto-side-windows--changed-size
-                                                  window (not across))))
-                                 (cons (auto-side-windows--slot window) size)))
-                             windows))))
+        (measured (and (cdr windows)
+                       (delq nil (mapcar
+                                  (lambda (window)
+                                    (when-let* ((size (auto-side-windows--changed-size
+                                                       window (not across))))
+                                      (cons (auto-side-windows--slot window) size)))
+                                  windows)))))
     `((size . ,(or size (alist-get 'size entry)))
       (slots . ,(append measured
                         (seq-remove (lambda (slot) (assq (car slot) measured))
@@ -597,16 +606,12 @@ size it has now."
       (when resized
         (auto-side-windows--set-geometry geometry frame)))))
 
-(defun auto-side-windows--size (across kind size)
+(defun auto-side-windows--size (size horizontal)
   "Return the action alist entry that gives SIZE, or nil for none.
-KIND is `along' for the length of the side itself and `slot' for the
-one slot.  ACROSS is non-nil when the size of the side is a width, as
-`auto-side-windows--across-p' answers, and it decides whether a length
-is a width or a height."
+SIZE is a width in pixels if HORIZONTAL, else a height."
   (when size
-    (let ((horizontal (eq (and across t) (eq kind 'along))))
-      (list (cons (if horizontal 'window-width 'window-height)
-                  (auto-side-windows--resizer size horizontal))))))
+    (list (cons (if horizontal 'window-width 'window-height)
+                (auto-side-windows--resizer size horizontal)))))
 
 (defun auto-side-windows--sizes (side slot)
   "Return the action alist that gives SIDE and SLOT the size they had.
@@ -615,9 +620,9 @@ Nil where nothing was measured, or where the sizes are not remembered."
     (when-let* ((entry (alist-get side (auto-side-windows--geometry))))
       ;; not in the `when-let*': nil is an answer here, not a reason to stop
       (let ((across (auto-side-windows--across-p side)))
-        (append (auto-side-windows--size across 'along (alist-get 'size entry))
+        (append (auto-side-windows--size (alist-get 'size entry) across)
                 (auto-side-windows--size
-                 across 'slot (alist-get slot (alist-get 'slots entry))))))))
+                 (alist-get slot (alist-get 'slots entry)) (not across)))))))
 
 (defun auto-side-windows--action-alist (side slot alist)
   "Return the action alist that displays a buffer in SLOT of SIDE.
@@ -629,8 +634,8 @@ then the caller's, and the caller's win, because the parameters are set
 in the order of the list.
 
 Behind ALIST the order is the order of priority: what the reader last
-resized beats the size option of the side, and that beats its action
-alist."
+resized beats the size option of the side, that beats the action alist
+of the side, and that beats the common action alist."
   (let ((side-size (auto-side-windows--side-option side 'size)))
     (append
      `((side . ,side) (slot . ,slot))
@@ -645,8 +650,8 @@ alist."
                        'window-width
                      'window-height)
                    side-size)))
-     auto-side-windows-common-alist
-     (auto-side-windows--side-option side 'alist))))
+     (auto-side-windows--side-option side 'alist)
+     auto-side-windows-common-alist)))
 
 (defun auto-side-windows--shown-window (buffer side alist)
   "Return the window that shows BUFFER, if it is on SIDE or on none.
@@ -700,7 +705,8 @@ for neither: it is there to dress a side window, which
       (let ((window (or (and (not wanted)
                              (auto-side-windows--shown-window buffer side alist))
                         (display-buffer-in-side-window
-                         buffer (auto-side-windows--action-alist side slot alist)))))
+                         buffer
+                         (auto-side-windows--action-alist side slot alist)))))
         (when (and window (window-parameter window 'window-side))
           (auto-side-windows--claim buffer window side alist))
         window))))
@@ -830,7 +836,7 @@ It runs `auto-side-windows-before-toggle-hook' before the move and
       (let ((side (buffer-local-value 'auto-side-windows--detached buffer)))
         (with-current-buffer buffer
           (kill-local-variable 'auto-side-windows--detached))
-        (switch-to-prev-buffer window 'bury)
+        (quit-restore-window window 'bury)
         (pop-to-buffer buffer `(auto-side-windows--display-buffer
                                 (auto-side-windows--side . ,side)))))
      (t
@@ -852,14 +858,17 @@ longer.
 It runs `auto-side-windows-before-display-hook' before displaying the
 buffer and `auto-side-windows-after-display-hook' after."
   (interactive
-   (list (intern (completing-read "Select side: "
-                                  '("left" "right" "top" "bottom") nil t))))
+   (let ((side (completing-read "Select side: "
+                                '("left" "right" "top" "bottom") nil t)))
+     (when (string-empty-p side)
+       (user-error "No side given"))
+     (list (intern side))))
   (let ((buffer (current-buffer))
         (window (selected-window)))
     (when (eq (window-buffer window) buffer)
       (if (window-parameter window 'window-side)
           (delete-window window)
-        (switch-to-prev-buffer window 'bury)))
+        (quit-restore-window window 'bury)))
     (with-current-buffer buffer
       (kill-local-variable 'auto-side-windows--detached))
     (pop-to-buffer buffer `(auto-side-windows--display-buffer
@@ -947,7 +956,7 @@ windows, where a press is yours to give away:
 
 and give the part of the header line the map as its `local-map'."
   (interactive "e")
-  ;; the side first: a press outside a side window is left to others
+  ;; the side first: a press outside a side window does nothing
   (when-let* ((from (posn-window (event-start event)))
               ((windowp from))
               (side (window-parameter from 'window-side))
