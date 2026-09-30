@@ -471,7 +471,8 @@ comes later, from a timer or a process, is not the reader's either."
 
 (ert-deftest auto-side-windows-test-a-resize-is-noted-after-its-command ()
   "A resize command and a drag mark a resize, any other command clears it.
-A mouse event is the exception: the release that ends a drag keeps it.
+The release that ends a drag is the exception and keeps it; a click
+clears it like a key.
 A drag runs each move of the mouse as a command without a name, so its
 event is what tells."
   (let ((auto-side-windows--resized nil)
@@ -493,7 +494,10 @@ event is what tells."
           (last-input-event '(drag-mouse-1 (nil) (nil))))
       (auto-side-windows--note-resize))
     (should auto-side-windows--resized)
-    (setq auto-side-windows--resized nil)
+    (let ((this-command 'push-button)
+          (last-input-event '(mouse-1 (nil))))
+      (auto-side-windows--note-resize))
+    (should-not auto-side-windows--resized)
     (let ((this-command (lambda () (interactive)))
           (last-input-event '(mouse-movement (nil))))
       (auto-side-windows--note-resize))
@@ -686,6 +690,24 @@ and detached from none has nowhere to go, and the command says so."
     (switch-to-buffer b)
     (should-error (auto-side-windows-toggle-side-window)
                   :type 'user-error)))
+
+(ert-deftest auto-side-windows-test-a-dedicated-window-lets-go ()
+  "A buffer leaves an ordinary window dedicated to it, both ways.
+The window can show no other buffer, so it goes; the detached buffer
+goes back to its side, and a buffer sent to a side goes there."
+  (auto-side-windows-test--with-sides
+    (select-window (auto-side-windows-test--side-window a 'left 0))
+    (auto-side-windows-toggle-side-window)
+    (set-window-dedicated-p (get-buffer-window a) t)
+    (auto-side-windows-toggle-side-window)
+    (should (eq (window-parameter (get-buffer-window a) 'window-side) 'left))
+    (select-window (window-main-window))
+    (switch-to-buffer b)
+    (set-window-dedicated-p (selected-window) t)
+    (split-window)
+    (with-current-buffer b
+      (auto-side-windows-display-buffer-right))
+    (should (eq (window-parameter (get-buffer-window b) 'window-side) 'right))))
 
 (ert-deftest auto-side-windows-test-a-side-is-preserved ()
   "The size along a side is preserved, and preserved again after a resize.

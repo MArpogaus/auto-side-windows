@@ -535,20 +535,20 @@ cannot hold any more, after the frame shrank, gives as much as fits."
 `auto-side-windows--note-resize' sets it after a command, and the next
 measurement takes it off, so a size change that a timer or a process
 makes later is not the reader's.  A resize command that changed no size
-causes no measurement, and the next command that is no mouse event
-takes the mark off.")
+causes no measurement, and the next command takes the mark off, unless
+it is the release of a drag.")
 
 (defun auto-side-windows--note-resize ()
   "Note whether the reader resized, for `post-command-hook'.
 A resize is the reader's when the command is one of
 `auto-side-windows-resize-commands', or when the event is a move of the
 mouse, which only a drag makes a size change of.  Any other command
-takes the mark off, except a mouse event: the release that ends a drag
-can come before the redisplay that measures its last move."
+takes the mark off, except the release that ends a drag: it can come
+before the redisplay that measures the last move."
   (cond ((or (memq this-command auto-side-windows-resize-commands)
              (mouse-movement-p last-input-event))
          (setq auto-side-windows--resized t))
-        ((not (mouse-event-p last-input-event))
+        ((not (memq 'drag (event-modifiers last-input-event)))
          (setq auto-side-windows--resized nil))))
 
 (defun auto-side-windows--size-before (window horizontal)
@@ -802,10 +802,12 @@ WINDOW is selected."
 
 (defun auto-side-windows--leave (window)
   "Take the current buffer out of WINDOW, an ordinary window.
-A window made for the buffer goes.  Any other window shows the buffer it
+A window made for the buffer goes, and so does a window dedicated to
+it, which can show no other.  Any other window shows the buffer it
 showed before: a window that came with its own tab or frame keeps them,
 where `quit-restore-window' would close the tab or hide the frame."
-  (if (eq (car (window-parameter window 'quit-restore)) 'window)
+  (if (or (eq (car (window-parameter window 'quit-restore)) 'window)
+          (not (memq (window-dedicated-p window) '(nil side))))
       (quit-restore-window window 'bury)
     (switch-to-prev-buffer window 'bury)))
 
@@ -863,9 +865,9 @@ It runs `auto-side-windows-before-toggle-hook' before the move and
       (pop-to-buffer buffer '(nil . ((some-window . mru)))))
      ((buffer-local-value 'auto-side-windows--detached buffer)
       (let ((side (buffer-local-value 'auto-side-windows--detached buffer)))
+        (auto-side-windows--leave window)
         (with-current-buffer buffer
           (kill-local-variable 'auto-side-windows--detached))
-        (auto-side-windows--leave window)
         (pop-to-buffer buffer `(auto-side-windows--display-buffer
                                 (auto-side-windows--side . ,side)))))
      (t
