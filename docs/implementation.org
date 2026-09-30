@@ -169,17 +169,19 @@ changed.  That frame is the one measured, and not the selected one, so
 that a side window resized on a second frame is written against the tab
 of that frame.
 
-It measures only a resize of the reader's.
-=auto-side-windows--resized-by-reader-p= asks two questions:
+It measures only a resize of the reader's.  After each command
+=auto-side-windows--note-resize=, on =post-command-hook=, marks a resize
+in =auto-side-windows--resized= when one of two things holds:
 
-- Is the command that runs, or else the one that ran last, one of
-  =auto-side-windows-resize-commands=?  Inside a command
-  =this-command= names it.  In the redisplay after the command
-  =this-command= is nil and =last-command= names it.
-- Is the event a move of the mouse?  A drag of a divider starts with
+- The command is one of =auto-side-windows-resize-commands=.
+- The event is a move of the mouse.  A drag of a divider starts with
   =mouse-drag-vertical-line= or =mouse-drag-mode-line=, but each move
   is a command of its own, an anonymous closure of the drag's transient
   map, so no command name finds it.
+
+The next measurement takes the mark off.  A size change that a timer or
+a process makes after that is not the reader's, though =last-command=
+still names the resize until the next key.
 
 Measured with a function on =window-size-change-functions=: a transient
 menu that fits its window reports =magit-dispatch= and the key =?=, a
@@ -188,6 +190,12 @@ drag reports a closure and =mouse-movement=.  A window that fits itself
 and a window that goes and gives its lines to a sister are therefore
 not measured.  The preserved sizes are renewed at every size change,
 measured or not.
+
+A marked measurement records only the sizes that changed since the last
+redisplay, as =window-pixel-width-before-size-change= and its sibling
+tell.  A wider right side makes a bottom window between the sides
+narrower, and the height a caller fitted that window to stays out of
+the record.
 
 The sizes are pixels, and the entries that give them back are functions
 that call =window-resize= pixelwise.  A window resized pixelwise, as it

@@ -325,8 +325,8 @@ by whatever route.  A side that the rules chose is not written here: the rules
 answer again every time, and a buffer therefore follows a rule that
 changes.
 
-The name is also the action alist key that names a side for one
-display:
+The name is also the action alist key that names the side of a display,
+and the display writes the side it names here:
 
     (display-buffer buffer \\='(auto-side-windows--display-buffer
                             (auto-side-windows-side . right)))
@@ -534,24 +534,44 @@ made; a number there is a number of lines."
                    (- size (auto-side-windows--window-size window horizontal))
                    horizontal nil t)))
 
-(defun auto-side-windows--resized-by-reader-p ()
-  "Return non-nil when the size change at hand is the reader's.
-It is when the command that runs, or else the one that ran last, is one
-of `auto-side-windows-resize-commands', or when the event is a move of
-the mouse, which only a drag makes a size change of."
-  (or (memq (or this-command last-command) auto-side-windows-resize-commands)
-      (eq (event-basic-type last-input-event) 'mouse-movement)))
+(defvar auto-side-windows--resized nil
+  "Non-nil when the reader resized and the sides are not measured yet.
+`auto-side-windows--note-resize' sets it after a command, and the next
+measurement takes it off, so a size change that a timer or a process
+makes later is not the reader's.")
+
+(defun auto-side-windows--note-resize ()
+  "Note a resize by the reader, for `post-command-hook'.
+A resize is the reader's when the command is one of
+`auto-side-windows-resize-commands', or when the event is a move of the
+mouse, which only a drag makes a size change of."
+  (when (or (memq this-command auto-side-windows-resize-commands)
+            (eq (event-basic-type last-input-event) 'mouse-movement))
+    (setq auto-side-windows--resized t)))
+
+(defun auto-side-windows--changed-size (window horizontal)
+  "Return the width of WINDOW if HORIZONTAL, else its height, if it changed.
+Nil when the size is the one the last redisplay saw."
+  (let ((now (auto-side-windows--window-size window horizontal)))
+    (unless (= now (if horizontal
+                       (window-pixel-width-before-size-change window)
+                     (window-pixel-height-before-size-change window)))
+      now)))
 
 (defun auto-side-windows--measured (windows across entry)
   "Return the record of a side of WINDOWS; ACROSS when its size is a width.
-ENTRY is the record the side had.  A slot that is empty now keeps the
-size it had when it was last shown."
-  (let ((measured (mapcar (lambda (window)
-                            (cons (auto-side-windows--slot window)
-                                  (auto-side-windows--window-size
-                                   window (not across))))
-                          windows)))
-    `((size . ,(auto-side-windows--window-size (car windows) across))
+ENTRY is the record the side had.  A size that did not change keeps
+what ENTRY says: a resize of one side changes the other sides in one
+direction at most, and the other direction is not the reader's.  A slot
+that is empty now keeps the size it had when it was last shown."
+  (let ((size (auto-side-windows--changed-size (car windows) across))
+        (measured (delq nil (mapcar
+                             (lambda (window)
+                               (when-let* ((size (auto-side-windows--changed-size
+                                                  window (not across))))
+                                 (cons (auto-side-windows--slot window) size)))
+                             windows))))
+    `((size . ,(or size (alist-get 'size entry)))
       (slots . ,(append measured
                         (seq-remove (lambda (slot) (assq (car slot) measured))
                                     (alist-get 'slots entry)))))))
@@ -562,7 +582,7 @@ FRAME is the frame whose windows changed, and each frame keeps the
 sizes of its own tabs.  Nil means the selected frame.
 
 The sizes are measured only when the reader resized, as
-`auto-side-windows--resized-by-reader-p' tells.
+`auto-side-windows--resized' tells, and only where they changed.
 
 The size along the side is preserved as `window-preserve-size' does it,
 at every size change, so a window closing elsewhere leaves the side
@@ -571,7 +591,8 @@ what a drag of a divider does, so it is preserved again here with the
 size it has now."
   (when auto-side-windows-remember-sizes
     (let ((geometry (auto-side-windows--geometry frame))
-          (resized (auto-side-windows--resized-by-reader-p)))
+          (resized auto-side-windows--resized))
+      (setq auto-side-windows--resized nil)
       (dolist (side '(top bottom left right))
         (let ((windows (auto-side-windows--side-windows side frame))
               (across (auto-side-windows--across-p side)))
@@ -956,8 +977,8 @@ that matches, and the condition of this one is t, because the rules
 of each side are asked for every buffer in
 `auto-side-windows--display-buffer'.
 
-It also measures the sides on every size change, for
-`auto-side-windows-remember-sizes'."
+It also notes a resize by the reader after each command, and measures
+the sides on every size change, for `auto-side-windows-remember-sizes'."
   :global t
   :group 'auto-side-windows
   (if auto-side-windows-mode
@@ -965,9 +986,11 @@ It also measures the sides on every size change, for
         (add-to-list 'display-buffer-alist
                      '(t auto-side-windows--display-buffer) t)
         (add-hook 'window-size-change-functions
-                  #'auto-side-windows--measure))
+                  #'auto-side-windows--measure)
+        (add-hook 'post-command-hook #'auto-side-windows--note-resize))
     (remove-hook 'window-size-change-functions
                  #'auto-side-windows--measure)
+    (remove-hook 'post-command-hook #'auto-side-windows--note-resize)
     (setq display-buffer-alist
           (delete '(t auto-side-windows--display-buffer)
                   display-buffer-alist))))

@@ -321,7 +321,8 @@ What is measured is a change you make: a drag with the mouse, or one of
 the commands in =auto-side-windows-resize-commands=.  The default list
 holds =enlarge-window=, =shrink-window= and their horizontal variants.
 Add the commands you resize windows with, such as the ones of a hydra.
-Other changes are not remembered: a transient menu and =display-warning=
+Only the sizes that the change touched are remembered.  Other changes
+are not remembered: a transient menu and =display-warning=
 fit their windows to the text, and a menu of 32 lines does not make every
 later top window 32 lines tall.
 
