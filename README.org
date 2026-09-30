@@ -320,7 +320,8 @@ neighbour, a panel among them.  A divider you drag still moves.
 What is measured is a change you make with one of the commands in
 =auto-side-windows-resize-commands=.  The default list holds
 =enlarge-window=, =shrink-window= and their horizontal variants, and the
-commands that begin a drag of a divider, a mode line or a header line.
+commands that begin a drag of a divider, a mode line, a header line or
+a tab line.
 Add the commands you resize windows with, such as the ones of a hydra.
 Only the sizes that the change touched are remembered.  Other changes
 are not remembered: a transient menu and =display-warning=

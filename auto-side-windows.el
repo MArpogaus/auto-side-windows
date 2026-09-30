@@ -234,7 +234,8 @@ size its side names."
 (defcustom auto-side-windows-resize-commands
   '(enlarge-window shrink-window
                    enlarge-window-horizontally shrink-window-horizontally
-                   mouse-drag-vertical-line mouse-drag-mode-line mouse-drag-header-line)
+                   mouse-drag-vertical-line mouse-drag-mode-line
+                   mouse-drag-header-line mouse-drag-tab-line)
   "Commands whose resize of a side window is remembered.
 With `auto-side-windows-remember-sizes' on, a size is remembered when
 one of these commands changed it.  Every other change is left out: a

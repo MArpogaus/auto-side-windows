@@ -177,8 +177,8 @@ in =auto-side-windows--resized= when one of three things holds:
 - The command is one of =auto-side-windows-resize-commands=.
 - The event is a move of the mouse, and the commands since the last
   one of the list were moves too.  A drag of a divider begins with
-  =mouse-drag-vertical-line=, =mouse-drag-mode-line= or
-  =mouse-drag-header-line=, and each move
+  =mouse-drag-vertical-line=, =mouse-drag-mode-line=,
+  =mouse-drag-header-line= or =mouse-drag-tab-line=, and each move
   after it is a command of its own, an anonymous closure of the drag's
   transient map.  A drag that selects text begins with
   =mouse-drag-region= and marks nothing.
@@ -186,7 +186,10 @@ in =auto-side-windows--resized= when one of three things holds:
   can come before the redisplay that measures the last move, and it is
   a plain =mouse-1= where the mouse came back to the place it started.
   A click on a mode line begins with =mouse-drag-mode-line= as well,
-  but it has no move, and its release marks nothing.
+  but it has no move, and its release marks nothing.  A click after a
+  move of a glyph or two, less than =double-click-fuzz=, still counts:
+  the release then runs the command under the mouse, and a size that
+  command sets is kept.
 
 The next measurement takes the mark off, and so does the next command
 that is none of these.  A size change that a timer or a process makes
