@@ -483,8 +483,9 @@ comes later, from a timer or a process, is not the reader's either."
   "A resize command marks a resize, and a drag it begins marks its moves.
 Emacs runs each move of a drag as a command without a name, so the moves
 count after a resize command only, and so does the mouse event that
-ends the drag.  A drag that selects text begins with another command and
-marks nothing.  Any other command clears the mark."
+ends a drag after a move.  A click after a resize command, a click on a
+mode line among them, marks nothing, and neither does a drag that
+selects text.  Any other command clears the mark."
   (let ((auto-side-windows--resized nil)
         (auto-side-windows--resizing nil)
         (move (lambda () (interactive))))

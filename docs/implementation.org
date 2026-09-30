@@ -178,7 +178,8 @@ in =auto-side-windows--resized= when one of three things holds:
 - The event is a move of the mouse, and the commands since the last
   one of the list were moves too.  A drag of a divider begins with
   =mouse-drag-vertical-line=, =mouse-drag-mode-line=,
-  =mouse-drag-header-line= or =mouse-drag-tab-line=, and each move
+  =mouse-drag-header-line= or =mouse-drag-tab-line= (on Emacs 31, for a
+  window below another), and each move
   after it is a command of its own, an anonymous closure of the drag's
   transient map.  A drag that selects text begins with
   =mouse-drag-region= and marks nothing.

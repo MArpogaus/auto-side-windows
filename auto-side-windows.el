@@ -535,7 +535,7 @@ cannot hold any more, after the frame shrank, gives as much as fits."
 
 (defvar auto-side-windows--resizing nil
   "Where a resize is: `begun' after a resize command, `moved' after a move.
-A move of the mouse after either is `moved', and nil is no resize.")
+A move counts when it follows either, and nil is no resize.")
 
 (defvar auto-side-windows--resized nil
   "Non-nil when the reader resized and the sides are not measured yet.
