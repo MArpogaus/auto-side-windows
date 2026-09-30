@@ -100,6 +100,18 @@ neither."
   (with-temp-buffer
     (should-not (auto-side-windows--get-buffer-side (current-buffer)))))
 
+(ert-deftest auto-side-windows-test-a-new-mode-keeps-the-side ()
+"The side a reader chose, and the one a buffer left, outlive its mode.
+*Help* runs `help-mode' again for every description, and a reader who
+sent it to the top or took it out of its side window means the next
+description as well."
+  (with-temp-buffer
+    (setq-local auto-side-windows-side 'top)
+    (setq-local auto-side-windows--detached 'right)
+    (fundamental-mode)
+    (should (eq auto-side-windows-side 'top))
+    (should (eq auto-side-windows--detached 'right))))
+
 (ert-deftest auto-side-windows-test-side-from-alist ()
   "An `auto-side-windows-side' in the display alist wins over the rules.
 A `side' belongs to the caller, says nothing here, and never reaches

@@ -52,6 +52,10 @@ order:
    reader sends to a side.  The display path writes it for nobody
    else: a side that the rules chose is chosen again the next time, so
    a buffer follows a rule that changes.
+
+   Both variables are permanent-local.  A buffer that sets up its
+   major mode again for new content, as *Help* does for each
+   description, keeps the side the reader gave it.
 4. Do the rules of a side match?  The package tries top, bottom, left
    and right, in this order.
 

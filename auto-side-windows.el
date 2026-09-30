@@ -308,7 +308,13 @@ The key is this one and not `side', because `side' is each package's
 own word for a place on the frame: a side window to
 `display-buffer-in-side-window', a direction to
 `display-buffer-in-direction', a way to split to a package that splits
-for itself.")
+for itself.
+
+The value survives a change of major mode, as the one of
+`auto-side-windows--detached' does: a buffer that sets up its mode
+again for new content, as *Help* does, is still the buffer the reader
+sent to a side.")
+(put 'auto-side-windows-side 'permanent-local t)
 
 ;;;###autoload
 (put 'auto-side-windows-side 'safe-local-variable
@@ -318,6 +324,7 @@ for itself.")
   "The side this buffer was detached from, or nil for none.
 Any non-nil value means detached; the side is the one the buffer goes
 back to.  See `auto-side-windows-toggle-side-window'.")
+(put 'auto-side-windows--detached 'permanent-local t)
 
 ;;;; Helper Functions
 (defconst auto-side-windows--side-options
