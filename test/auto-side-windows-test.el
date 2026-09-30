@@ -101,7 +101,7 @@ neither."
     (should-not (auto-side-windows--get-buffer-side (current-buffer)))))
 
 (ert-deftest auto-side-windows-test-a-new-mode-keeps-the-side ()
-"The side a reader chose, and the one a buffer left, outlive its mode.
+  "The side a reader chose, and the one a buffer left, outlive its mode.
 *Help* runs `help-mode' again for every description, and a reader who
 sent it to the top or took it out of its side window means the next
 description as well."
@@ -376,11 +376,10 @@ slot still has the height the reader gave it."
     (let ((auto-side-windows-remember-sizes t)
           (one (auto-side-windows-test--side-window a 'left 0)))
       (auto-side-windows-test--side-window b 'left 3)
-      ;; the redisplay that counts the two windows
-      (auto-side-windows--measure nil)
       (when (window-resizable one 4)
-        (window-resize one 4 nil t)
-        ;; no redisplay needed: the swap measures before it deletes
+        (let ((last-command 'enlarge-window))
+          (window-resize one 4 nil t)
+          (auto-side-windows--measure nil))
         (let ((tall (window-total-height one)))
           (select-window one)
           (auto-side-windows-move-to-next-slot)
@@ -391,33 +390,40 @@ slot still has the height the reader gave it."
                                 (auto-side-windows--side-windows 'left)))
                      tall)))))))
 (ert-deftest auto-side-windows-test-measure-keeps-what-a-reader-set ()
-  "A resize is measured; a window that goes does not spoil the measurement.
-A deleted window gives its lines to a sister, and that size is nobody's.
-The first look at a side records its count and no size: a new window
-has the size its caller asked for, which is not the reader's."
+  "A resize by the reader is measured, and no other size change is.
+A window that fits itself to its text, as a transient menu does, and a
+window that goes and gives its lines to a sister leave the sizes alone.
+A drag is the reader's too: it runs as a command without a name, and
+its event is a move of the mouse."
   (auto-side-windows-test--with-sides
     (let ((auto-side-windows-remember-sizes t)
           (one (auto-side-windows-test--side-window a 'left 0)))
       (auto-side-windows-test--side-window b 'left 3)
-      (auto-side-windows--measure nil)
-      (let ((first (alist-get 'left (auto-side-windows--geometry))))
-        (should (= (alist-get 'count first) 2))
-        (should-not (alist-get 'size first))
-        (should-not (alist-get 'slots first)))
       (skip-unless (window-resizable one 4))
-      (window-resize one 4 nil t)
-      (auto-side-windows--measure nil)
+      (let ((last-command 'transient-setup))
+        (window-resize one 2 nil t)
+        (auto-side-windows--measure nil))
+      (should-not (auto-side-windows--geometry))
+      (let ((last-command 'enlarge-window))
+        (window-resize one 2 nil t)
+        (auto-side-windows--measure nil))
       (let* ((entry (alist-get 'left (auto-side-windows--geometry)))
              (slots (alist-get 'slots entry)))
-        (should (= (alist-get 'count entry) 2))
         (should (= (alist-get 0 slots) (window-pixel-height one)))
         (should (= (alist-get 'size entry) (window-pixel-width one)))
-        ;; a slot goes: the count follows, the sizes stay
+        ;; a slot goes: the sizes stay
         (delete-window one)
         (auto-side-windows--measure nil)
-        (let ((after (alist-get 'left (auto-side-windows--geometry))))
-          (should (= (alist-get 'count after) 1))
-          (should (equal (alist-get 'slots after) slots)))))))
+        (should (equal (alist-get 'slots (alist-get 'left (auto-side-windows--geometry)))
+                       slots))
+        ;; a drag
+        (let ((last-command (lambda () (interactive)))
+              (last-input-event '(mouse-movement (nil)))
+              (two (get-buffer-window b)))
+          (window-resize two 2 t)
+          (auto-side-windows--measure nil)
+          (should (= (alist-get 'size (alist-get 'left (auto-side-windows--geometry)))
+                     (window-pixel-width two))))))))
 
 (ert-deftest auto-side-windows-test-sizes-name-the-right-side ()
   "The size of a side and the size of a slot are the two directions.
@@ -428,8 +434,8 @@ as it was and not to the nearest line."
   (let ((auto-side-windows-remember-sizes t))
     (cl-letf (((symbol-function 'auto-side-windows--geometry)
                (lambda ()
-                 '((left (size . 40) (count . 2) (slots (0 . 20)))
-                   (top (size . 15) (count . 1) (slots (0 . 90)))))))
+                 '((left (size . 40) (slots (0 . 20)))
+                   (top (size . 15) (slots (0 . 90)))))))
       (should (equal (mapcar #'car (auto-side-windows--sizes 'left 0))
                      '(window-width window-height)))
       (should (equal (mapcar #'car (auto-side-windows--sizes 'top 0))

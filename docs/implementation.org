@@ -161,14 +161,25 @@ changed.  That frame is the one measured, and not the selected one, so
 that a side window resized on a second frame is written against the tab
 of that frame.
 
-It measures a side only while the side has as many windows as it had
-when it was measured last.  A window that goes gives its lines to a
-sister, and that size is nobody's; a reader who resizes a window
-changes no count.  The first look at a side counts its windows and
-measures nothing: a new window has the size its caller asked for, and
-=display-warning= asks for a window that fits its text.  The commands
-that delete a side window measure first, because a redisplay may not
-have happened since the reader resized.
+It measures only a resize of the reader's.
+=auto-side-windows--resized-by-reader-p= asks two questions:
+
+- Is the command that runs, or else the one that ran last, one of
+  =auto-side-windows-resize-commands=?  Inside a command
+  =this-command= names it.  In the redisplay after the command
+  =this-command= is nil and =last-command= names it.
+- Is the event a move of the mouse?  A drag of a divider starts with
+  =mouse-drag-vertical-line= or =mouse-drag-mode-line=, but each move
+  is a command of its own, an anonymous closure of the drag's transient
+  map, so no command name finds it.
+
+Measured in the rig with =window-size-change-functions=: a transient
+menu that fits its window reports =magit-dispatch= and the key =?=, a
+key bound to =enlarge-window-horizontally= reports that command, and a
+drag reports a closure and =mouse-movement=.  A window that fits itself
+and a window that goes and gives its lines to a sister are therefore
+not measured.  The preserved sizes are renewed at every size change,
+measured or not.
 
 The sizes are pixels, and the entries that give them back are functions
 that call =window-resize= pixelwise.  A window resized pixelwise, as it
@@ -223,8 +234,8 @@ with the slot of the other in its action alist.  Three things follow:
 - Each window is a new one.  Emacs clears the buffer history of a window
   it makes, and a side window that offers the buffer of its neighbour to
   =switch-to-prev-buffer= shows two buffers where the reader put one.
-- The sizes come from the side again, so they are measured before the
-  windows go and given back to the slots afterwards.  A side window a
+- The sizes come from the side again: the slots get back the sizes
+  that were measured when the reader resized them.  A side window a
   reader made taller stays the taller one, whichever buffer moves into
   it.
 
@@ -297,9 +308,9 @@ one entry that asks its own questions.
 - the drag, and that it does nothing across two sides, into an ordinary
   window, or where it began
 - that the package binds no key
-- the measurement, that a window which goes leaves the sizes alone,
-  that the first look records no size, and that the frame it is given is
-  the frame it reads
+- the measurement: a resize command and a drag are measured, a window
+  that fits itself and a window that goes are not, and the frame it is
+  given is the frame it reads
 - that the size along a side is preserved, holds when a window closes
   under =window-combination-resize=, and is preserved again after a
   resize; and that nothing is preserved where nothing is remembered

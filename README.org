@@ -312,11 +312,17 @@ area takes the difference.  This matters with =window-combination-resize=
 set to =t=, where a window that closes gives its space to every
 neighbour, a panel among them.  A divider you drag still moves.
 
-What is measured is a change you make.  A window that arrives on a side
-has the size its caller asked for, and that is not remembered until you
-resize it: =display-warning= fits its window to the text, and a
-=*Warnings*= buffer of three lines does not make every later top window
-three lines tall.
+What is measured is a change you make: a drag with the mouse, or one of
+the commands in =auto-side-windows-resize-commands=.  The default list
+holds =enlarge-window=, =shrink-window= and their horizontal variants.
+Add the commands you resize windows with, such as the ones of a hydra.
+Other changes are not remembered: a transient menu and =display-warning=
+fit their windows to the text, and a menu of 32 lines does not make every
+later top window 32 lines tall.
+
+#+begin_src emacs-lisp
+  (add-to-list 'auto-side-windows-resize-commands #'my/resize-window)
+#+end_src
 
 The sizes belong to the tab they were measured in, so each tab keeps its
 own, and each frame keeps its own tabs.  This works whether or not
