@@ -47,11 +47,13 @@ order:
    sets =auto-side-windows--detached= in the buffer.  The buffer then
    goes to an ordinary window.
 3. Does the buffer know its side?  =auto-side-windows-side= holds it.
-   A file sets the variable as a file-local variable, and
-   =auto-side-windows-display-buffer-on-side= sets it for the buffer a
-   reader sends to a side.  The display path writes it for nobody
-   else: a side that the rules chose is chosen again the next time, so
-   a buffer follows a rule that changes.
+   A file sets the variable as a file-local variable, and every
+   display whose action alist names a side sets it: the commands a
+   reader sends a buffer to a side with, and callers such as an agent
+   shell with a display action of its own.  The buffer then goes there
+   again by any route, =switch-to-buffer= among them.  A side that the
+   rules chose is not written: it is chosen again the next time, so a
+   buffer follows a rule that changes.
 
    Both variables are permanent-local.  A buffer that sets up its
    major mode again for new content, as *Help* does for each

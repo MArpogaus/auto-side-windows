@@ -292,9 +292,9 @@ Each function is called with the buffer."
 (defvar-local auto-side-windows-side nil
   "Side window this buffer belongs to, or nil to decide by the rules.
 Set it as a file-local variable to pin a buffer to one side.
-`auto-side-windows-display-buffer-on-side' sets it as well, so a
-buffer a reader sent to a side goes there again each time it is
-displayed.  A side that the rules chose is not written here: the rules
+A display that names a side sets it as well, so a buffer that a reader
+or a caller sent to a side goes there again each time it is displayed,
+by whatever route.  A side that the rules chose is not written here: the rules
 answer again every time, and a buffer therefore follows a rule that
 changes.
 
@@ -619,9 +619,12 @@ window already shows it.
 
 A reused window can be an ordinary one, and a side that allows no slot
 gives no window at all.  `auto-side-windows-after-display-hook' runs
-for neither: it is there to dress a side window.  A side window keeps
+for neither: it is there to dress a side window.  A side that ALIST
+names is written into `auto-side-windows-side' of BUFFER once the
+window is there.  A side window keeps
 the size it is given while `auto-side-windows-remember-sizes' is on."
-  (let* ((side (auto-side-windows--get-buffer-side buffer alist))
+  (let* ((named alist)
+         (side (auto-side-windows--get-buffer-side buffer alist))
          (wanted (cdr (assq 'slot alist)))
          (slot (and (memq side '(top bottom left right))
                     (or wanted
@@ -639,6 +642,9 @@ the size it is given while `auto-side-windows-remember-sizes' is on."
                                  shown))
                           (display-buffer-in-side-window buffer alist))))
           (when (and window (window-parameter window 'window-side))
+            (when (assq 'auto-side-windows-side named)
+              (with-current-buffer buffer
+                (setq-local auto-side-windows-side side)))
             (when auto-side-windows-remember-sizes
               (window-preserve-size window across t))
             (run-hook-with-args 'auto-side-windows-after-display-hook
@@ -782,9 +788,9 @@ It runs `auto-side-windows-before-toggle-hook' before the move and
 (defun auto-side-windows-display-buffer-on-side (side)
   "Display the current buffer in a window on SIDE.
 The buffer goes to that side whatever the rules say, and it keeps the
-side in `auto-side-windows-side': a reader who sends a buffer to a
-side means it, and the buffer goes there again each time it is
-displayed.
+side in `auto-side-windows-side', as every display that names a side
+does: a reader who sends a buffer to a side means it, and the buffer
+goes there again each time it is displayed.
 
 The window the buffer leaves is the selected one, and it is left alone
 unless it shows the buffer.  A buffer sent to a side is detached no
@@ -802,8 +808,7 @@ buffer and `auto-side-windows-after-display-hook' after."
           (delete-window window)
         (switch-to-prev-buffer window 'bury)))
     (with-current-buffer buffer
-      (kill-local-variable 'auto-side-windows--detached)
-      (setq-local auto-side-windows-side side))
+      (kill-local-variable 'auto-side-windows--detached))
     (pop-to-buffer buffer `(nil . ((auto-side-windows-side . ,side))))))
 
 ;;;###autoload

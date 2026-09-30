@@ -477,7 +477,7 @@ selected."
   "A side the rules chose is not written into the buffer.
 The buffer-local side answers before the rules do, so a buffer keeps
 none of its own and follows a rule the reader changes.  A side a
-command names is kept, and puts the buffer there each time."
+command or a caller names is kept, and puts the buffer there each time."
   (auto-side-windows-test--with-sides
     (let ((auto-side-windows-left-buffer-names '("\\`\\*slot")))
       (auto-side-windows--display-buffer a nil)
@@ -488,7 +488,15 @@ command names is kept, and puts the buffer there each time."
     ;; a command that names a side is the reader saying so
     (with-current-buffer a
       (auto-side-windows-display-buffer-on-side 'top))
-    (should (eq (buffer-local-value 'auto-side-windows-side a) 'top))))
+    (should (eq (buffer-local-value 'auto-side-windows-side a) 'top))
+    ;; and a caller that names one means it as well: the next display
+    ;; that names none goes there too, whatever the rules say
+    (let ((auto-side-windows-bottom-buffer-names '("\\`\\*slot")))
+      (auto-side-windows--display-buffer b '((auto-side-windows-side . right)))
+      (delete-window (get-buffer-window b))
+      (auto-side-windows--display-buffer b nil)
+      (should (eq (window-parameter (get-buffer-window b) 'window-side)
+                  'right)))))
 
 (ert-deftest auto-side-windows-test-the-caller-adds-window-parameters ()
   "The parameters of a caller come on top of those of the side.
