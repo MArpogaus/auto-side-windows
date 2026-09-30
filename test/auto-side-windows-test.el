@@ -70,18 +70,20 @@
 (ert-deftest auto-side-windows-test-side-from-variable ()
   "The buffer-local side overrides the rules, and a detached buffer has none.
 Both are plain values, so a buffer that declares neither must match
-neither."
+neither.  `auto-side-windows-follow-rules' forgets both."
   (with-temp-buffer
     (setq-local auto-side-windows-side 'left)
     (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'left))
     (setq-local auto-side-windows--detached t)
-    (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'detached))
+    (should-not (auto-side-windows--get-buffer-side (current-buffer)))
     (should (eq (auto-side-windows--get-buffer-side
                  (current-buffer) '((auto-side-windows-side . right)))
                 'right))
-    (should (eq (auto-side-windows--get-buffer-side (current-buffer)
-                                                    '((side . right)))
-                'detached)))
+    (should-not (auto-side-windows--get-buffer-side (current-buffer)
+                                                    '((side . right))))
+    (let ((auto-side-windows-top-buffer-names (list (regexp-quote (buffer-name)))))
+      (auto-side-windows-follow-rules)
+      (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'top))))
   ;; A fresh buffer inherits neither.
   (with-temp-buffer
     (should-not (auto-side-windows--get-buffer-side (current-buffer)))))

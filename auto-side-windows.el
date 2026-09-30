@@ -415,9 +415,10 @@ side the rules chose stays theirs."
       (cdr (assq 'auto-side-windows--side alist))))
 
 (defun auto-side-windows--get-buffer-side (buffer &optional alist)
-  "Return the side BUFFER goes to: top, bottom, left, right or detached.
-Nil where no rule matches, which leaves the buffer to Emacs.  ALIST is
-passed to `buffer-match-p' for the conditions that ask for it.
+  "Return the side BUFFER goes to: top, bottom, left or right.
+Nil for a detached buffer and where no rule matches, which leaves the
+buffer to Emacs.  ALIST is passed to `buffer-match-p' for the conditions
+that ask for it.
 
 The questions come in this order: the side ALIST names, see
 `auto-side-windows--named-side', the detached flag,
@@ -425,7 +426,7 @@ The questions come in this order: the side ALIST names, see
   (with-current-buffer buffer
     (cond
      ((auto-side-windows--named-side alist))
-     (auto-side-windows--detached 'detached)
+     (auto-side-windows--detached nil)
      (auto-side-windows-side)
      (t (seq-find (lambda (side)
                     (buffer-match-p (auto-side-windows--side-condition side)
@@ -946,6 +947,17 @@ buffer and `auto-side-windows-after-display-hook' after."
   (auto-side-windows-display-buffer-on-side 'right))
 
 ;;;###autoload
+(defun auto-side-windows-follow-rules ()
+  "Let the rules decide the side of the current buffer again.
+The command forgets the side the buffer keeps, from a command, a caller
+or a file, and the side it was detached from."
+  (interactive)
+  (kill-local-variable 'auto-side-windows-side)
+  (kill-local-variable 'auto-side-windows--detached)
+  (message "%s follows the rules: %s" (buffer-name)
+           (or (auto-side-windows--get-buffer-side (current-buffer)) "no side")))
+
+;;;###autoload
 (defun auto-side-windows-switch-to-buffer (buffer)
   "Switch to BUFFER, read from the buffers that belong to a side.
 The candidates are grouped by their side.  A buffer the reader detached
@@ -956,9 +968,7 @@ buffer goes to its side window rather than to the selected window."
    (list
     (when-let* ((side-buffers
                  (seq-filter
-                  (lambda (buffer)
-                    (memq (auto-side-windows--get-buffer-side buffer)
-                          '(top bottom left right)))
+                  #'auto-side-windows--get-buffer-side
                   (buffer-list)))
                 (pred (lambda (b)
                         (setq b (get-buffer (if (consp b) (car b) b)))

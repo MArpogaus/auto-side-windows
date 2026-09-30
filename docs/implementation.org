@@ -37,8 +37,8 @@ order:
    so can any caller.  =auto-side-windows--side= names a side for one
    display only: the slot swap and the way back from the toggle use it,
    so a side that the rules chose stays with the rules.  This question
-   comes first, because =detached= is no side to hand on to a side
-   window.
+   comes first: the way back from the toggle names the side of a buffer
+   that is still detached.
 
    The key is the package's own, and not =side=, because the entry
    above offers this package every buffer Emacs displays, and =side=
@@ -47,8 +47,8 @@ order:
    direction to =display-buffer-in-direction=, a way to split to a
    package that splits for itself.
 2. Is the buffer detached?  =auto-side-windows-toggle-side-window=
-   sets =auto-side-windows--detached= in the buffer.  The buffer then
-   goes to an ordinary window.
+   sets =auto-side-windows--detached= in the buffer.  The answer is then
+   nil, and the buffer goes to an ordinary window.
 3. Does the buffer know its side?  =auto-side-windows-side= holds it.
    A file sets the variable as a file-local variable, and every
    display whose action alist names a side with that key sets it: the
@@ -326,8 +326,9 @@ one entry that asks its own questions.
 =make test= runs the batch suite in
 =test/auto-side-windows-test.el=.  It tests:
 
-- the side of a buffer, for each of the four questions above, and that
-  the side a reader gave a buffer outlives a new major mode
+- the side of a buffer, for each of the four questions above, that the
+  side a reader gave a buffer outlives a new major mode, and that
+  =auto-side-windows-follow-rules= forgets it
 - the condition that the rules of a side make
 - the free slot of an empty side, and the slot of a window that is
   there for a full side
