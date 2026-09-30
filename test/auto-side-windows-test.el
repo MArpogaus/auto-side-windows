@@ -132,10 +132,9 @@ go first in the alist it builds."
         (should (eq (alist-get 'slot alist) 0))))))
 
 (ert-deftest auto-side-windows-test-free-slot ()
-  "Without side windows the first slot is free, and detached buffers get none."
+  "Without side windows the first slot is free."
   (with-temp-buffer
-    (should (equal (auto-side-windows--get-next-free-slot 'right (current-buffer)) 0))
-    (should-not (auto-side-windows--get-next-free-slot 'detached (current-buffer)))))
+    (should (equal (auto-side-windows--get-next-free-slot 'right (current-buffer)) 0))))
 
 (ert-deftest auto-side-windows-test-a-full-side-answers-a-slot-that-is-there ()
   "A full side answers with the slot of a window that is there.
@@ -164,19 +163,23 @@ slots alone."
     (should-not (member '(t auto-side-windows--display-buffer) display-buffer-alist))))
 
 (ert-deftest auto-side-windows-test-display-on-side-outside-side-window ()
-  "Displaying on a side works from a normal window.
-With the mode on, because its entry in `display-buffer-alist' is what
-reads the side out of the action alist."
-  (auto-side-windows-mode 1)
-  (unwind-protect
-      (with-temp-buffer
-        (let* ((buffer (current-buffer))
-               (window (progn (auto-side-windows-display-buffer-on-side 'right)
-                              (get-buffer-window buffer))))
-          (should (windowp window))
-          (should (eq (window-parameter window 'window-side) 'right))
-          (should (eq (window-buffer window) buffer))))
-    (auto-side-windows-mode -1)))
+  "Displaying on a side works from a normal window, with the mode on or off.
+The command names the display function of the package in its action.  A
+buffer that another ordinary window shows as well goes to the side all
+the same: the side is what the reader asked for."
+  (dolist (mode '(1 -1))
+    (auto-side-windows-mode mode)
+    (unwind-protect
+        (with-temp-buffer
+          (let ((buffer (current-buffer)))
+            (save-window-excursion
+              (set-window-buffer (split-window) buffer)
+              (auto-side-windows-display-buffer-on-side 'right)
+              (let ((window (get-buffer-window buffer)))
+                (should (eq (window-parameter window 'window-side) 'right))
+                (should (eq (window-buffer window) buffer))
+                (delete-window window)))))
+      (auto-side-windows-mode -1))))
 
 (ert-deftest auto-side-windows-test-reused-plain-window-runs-no-hook ()
   "A buffer already on screen in an ordinary window stays ordinary.
@@ -319,7 +322,10 @@ into the windows that were there."
     (auto-side-windows-move-to-previous-slot)
     (should (eq (auto-side-windows-test--in-slot 'left 0) a))
     (should (eq (auto-side-windows-test--in-slot 'left 3) b))
-    (should (eq (window-buffer (selected-window)) a))))
+    (should (eq (window-buffer (selected-window)) a))
+    ;; a move keeps no side in the buffers: the rules still decide
+    (should-not (buffer-local-value 'auto-side-windows-side a))
+    (should-not (buffer-local-value 'auto-side-windows-side b))))
 (ert-deftest auto-side-windows-test-move-needs-a-side-window ()
   "The command says so where there is no side window to move."
   (save-window-excursion
@@ -540,6 +546,7 @@ and detached from none has nowhere to go, and the command says so."
     ;; and back to the side it came from
     (auto-side-windows-toggle-side-window)
     (should-not (buffer-local-value 'auto-side-windows--detached a))
+    (should-not (buffer-local-value 'auto-side-windows-side a))
     (should (eq (window-parameter (get-buffer-window a) 'window-side) 'left))
     (should (eq (window-buffer) a))
     ;; a buffer that was in no side window is told, not toggled
