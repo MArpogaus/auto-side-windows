@@ -21,5 +21,5 @@ jobs:
         version: ${{ matrix.emacs-version }}
     - name: Show version
       run: emacs --version
-    - name: Byte-compile, checkdoc, package-lint, relint and test
+    - name: Byte-compile, package-lint, relint and test
       run: make

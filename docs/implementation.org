@@ -31,11 +31,14 @@ that Emacs would take it without the package.
 =auto-side-windows--get-buffer-side= asks these questions, in this
 order:
 
-1. Does the action alist name a side?  The key is
-   =auto-side-windows-side=, which the commands
-   =auto-side-windows-display-buffer-top= and its three siblings put
-   there.  A caller that names a side means it, and it is asked first:
-   =detached= is no side to hand on to a side window.
+1. Does the action alist name a side?  =auto-side-windows--named-side=
+   reads two keys.  =auto-side-windows-side= names a side that the
+   buffer keeps: the commands that send a buffer to a side use it, and
+   so can any caller.  =auto-side-windows--side= names a side for one
+   display only: the slot swap and the way back from the toggle use it,
+   so a side that the rules chose stays with the rules.  This question
+   comes first, because =detached= is no side to hand on to a side
+   window.
 
    The key is the package's own, and not =side=, because the entry
    above offers this package every buffer Emacs displays, and =side=
@@ -48,9 +51,9 @@ order:
    goes to an ordinary window.
 3. Does the buffer know its side?  =auto-side-windows-side= holds it.
    A file sets the variable as a file-local variable, and every
-   display whose action alist names a side sets it: the commands a
-   reader sends a buffer to a side with, and callers such as an agent
-   shell with a display action of its own.  The buffer then goes there
+   display whose action alist names a side with that key sets it: the
+   commands a reader sends a buffer to a side with, and callers such as
+   an agent shell with a display action of its own.  The buffer then goes there
    again by any route, =switch-to-buffer= among them.  A side that the
    rules chose is not written: it is chosen again the next time, so a
    buffer follows a rule that changes.
@@ -77,12 +80,9 @@ gives the number for each side, and a window has a slot number in its
 side.
 
 =auto-side-windows--get-next-free-slot= walks the slots of the side
-from zero.  It returns the first free slot.  It returns the slot of a
-window that it can reuse:
-
-- the window that already shows the buffer
-- a window with a buffer of the same major mode, if
-  =auto-side-windows-reuse-mode-window= names the side
+from zero.  It returns the first free slot, or the slot of a window with
+a buffer of the same major mode, if =auto-side-windows-reuse-mode-window=
+names the side.
 
 A side that holds as many windows as =window-sides-slots= allows is
 full, whatever slots those windows sit in.  Emacs splits no window on a
@@ -101,12 +101,12 @@ anyone setting the buffer of a window: see moving a buffer along a side.
 
 The search counts up from zero and never returns a negative slot, so a
 caller that asks for one keeps it: =dirvish-side= displays itself in slot
--1, and no buffer of ours can land there.  A buffer that needs a slot of
+-1, and no buffer that this package places can land there.  A buffer that needs a slot of
 its own therefore needs no bookkeeping in this package.
 
 * The display
 
-=auto-side-windows--display-buffer= puts three things together:
+=auto-side-windows--action-alist= puts three things together:
 
 - the window parameters: the common ones, the ones of the side, and
   the ones the caller of =display-buffer= brought
@@ -127,11 +127,18 @@ send a buffer to it.  =auto-side-windows--side-option= reads one part of
 one side from it.  The names are written out.  The compiler therefore
 reads them, and a search finds them.
 
-The function then calls =display-buffer-in-side-window=, or it reuses
-the window that shows the buffer already.  A reused window can be an
-ordinary window.  The buffer then went to no side, so
+=auto-side-windows--display-buffer= then reuses the window that shows
+the buffer already, or it calls =display-buffer-in-side-window= with
+that alist.  A reused window can be an ordinary window, except where the
+action alist names a side: the buffer is to go to that side then.  After
+an ordinary window the buffer went to no side, so
 =auto-side-windows-after-display-hook= does not run for it: the hook is
 there to dress a side window, and an ordinary window is not one.
+=auto-side-windows--claim= runs the hook for a side window, writes a
+named side into the buffer and preserves the size.
+
+The commands name =auto-side-windows--display-buffer= in their own
+display action, so they work with the mode off as well.
 
 * The geometry of a side
 
@@ -142,7 +149,8 @@ a window which goes and comes back is made with the size the reader
 gave it.
 
 =auto-side-windows--geometry= and its setter keep an alist of
-=(SIDE SIZE COUNT SLOTS)= in the current tab.  A tab is where Emacs
+=(SIDE (size . SIZE) (slots . ((SLOT . SIZE) ...)))= in the current
+tab.  A tab is where Emacs
 keeps a window configuration, so the sizes of a layout belong to the tab
 that shows it: each tab keeps its own, a new tab has none and starts from
 the options, and a tab that closes takes its sizes with it.  No key is
@@ -173,7 +181,7 @@ It measures only a resize of the reader's.
   is a command of its own, an anonymous closure of the drag's transient
   map, so no command name finds it.
 
-Measured in the rig with =window-size-change-functions=: a transient
+Measured with a function on =window-size-change-functions=: a transient
 menu that fits its window reports =magit-dispatch= and the key =?=, a
 key bound to =enlarge-window-horizontally= reports that command, and a
 drag reports a closure and =mouse-movement=.  A window that fits itself
@@ -195,32 +203,30 @@ for the width of a left or a right side and the height of a top or a
 bottom one.  Emacs then treats the window as fixed in that direction
 when it distributes space: a window that closes or a frame that changes
 leaves the side alone and the editing area takes the difference.  This
-is what =window-combination-resize= set to =t= needed, where a window
-that closes gives its space to every sibling.  Measured with that
-setting: a bottom panel of 17 lines closed and the top panel grew from
-8 lines to 14, and the next measurement kept the 14 as the reader's.  A
-preserved size is bound to the buffer the window showed and to the
-size it had, so =auto-side-windows--display-buffer= preserves the window
-again after each display, and the measurement preserves it again after
-each resize.  =adjust-window-trailing-edge=, which is what a drag of a
+matters with =window-combination-resize= set to =t=, where a window
+that closes gives its space to every sibling, a side window among them.
+A preserved size is bound to the buffer the window showed and to the
+size it had, so =auto-side-windows--claim= preserves the window again
+after each display, and the measurement preserves it again after each
+size change.  =adjust-window-trailing-edge=, which is what a drag of a
 divider calls, resizes a preserved window when it has to, so the
 reader's hand still moves it.
 
 =auto-side-windows--sizes= turns a record into the two entries of an
 action alist: the size of the side, a width for a left or a right side
 and a height for a top or a bottom one, and the size of the slot across
-it.  =auto-side-windows--display-buffer= puts them in front of the
-action alist, so Emacs applies them when it makes the window.
+it.  =auto-side-windows--action-alist= puts them behind the alist of
+the caller, so Emacs applies them when it makes the window.
 
-The order of that alist is the order of the say, because
-=display-buffer-in-side-window= reads the first entry it finds: what the
-reader last resized comes first, then the size option of the side, then
-the action alist of the side.  Nothing is taken out of the alist of a
+The order of that alist is the order of priority, because
+=display-buffer-in-side-window= reads the first entry it finds: the
+alist of the caller comes first, then what the reader last resized, then
+the size option of the side, then the action alist of the side.  Nothing is taken out of the alist of a
 side; a size left in it applies where the option is empty.
 
 * Moving a buffer along a side
 
-=auto-side-windows-move-to-next-slot= and its twin take the buffer of
+=auto-side-windows-move-to-next-slot= and its sibling take the buffer of
 the side window at point to another slot of that side.  The slots that
 exist are the only ones there are, so the buffer of the slot it moves to
 comes back the other way and no slot is made or left empty.  The last
@@ -293,11 +299,14 @@ one entry that asks its own questions.
 
 - the side of a buffer, for each of the four questions above
 - the condition that the rules of a side make
-- the free slot of an empty side, none for a detached buffer, and the
-  slot of a window that is there for a full side
+- the free slot of an empty side, and the slot of a window that is
+  there for a full side
 - the options of each side
-- that a buffer follows a rule the reader changes, and that a command
-  which names a side is remembered
+- that a buffer follows a rule the reader changes, that a command or a
+  caller which names a side is remembered, and that a move or a toggle
+  is not
+- that a command sends a buffer to a side with the mode off, and out of
+  an ordinary window that shows it
 - the window parameters of a caller, over the ones of the side
 - the toggle, in both directions, that the reader stays with the buffer,
   and where there is nothing to toggle

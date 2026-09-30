@@ -97,9 +97,8 @@ manager, and configure it as shown below:
 
 *** Example Configuration
 
-A small and complete setup.  The picture above shows it, and nothing
-else: =demo/demo.el= records the animation with exactly this
-configuration.
+A small and complete setup.  =demo/demo.el= records the animation above
+with this configuration.
 
 #+begin_src emacs-lisp
   (use-package auto-side-windows
@@ -167,8 +166,7 @@ keybindings:
      '(eshell-mode
        shell-mode
        term-mode
-       comint-mode
-       debugger-mode))
+       comint-mode))
 
     ;; Right side window configurations
     (auto-side-windows-right-buffer-names
@@ -178,7 +176,6 @@ keybindings:
     (auto-side-windows-right-buffer-modes
      '(Info-mode
        TeX-output-mode
-       eldoc-mode
        help-mode
        helpful-mode
        shortdoc-mode))
@@ -220,10 +217,9 @@ Turn =auto-side-windows-mode= on and write your rules.  A buffer that
 matches a rule then opens in the side window of that rule.  A rule
 matches the name of the buffer or its major mode.
 
-The commands need the mode.  It puts one entry into
-=display-buffer-alist=, and that entry is what sends a buffer to a
-side; without the mode Emacs decides where a buffer goes, and
-=auto-side-windows-display-buffer-on-side= gives an ordinary window.
+The rules need the mode.  The mode puts one entry into
+=display-buffer-alist=, and that entry sends a buffer to its side.  The
+commands that move a buffer to a side work without the mode.
 
 A buffer can also name its side itself, in =auto-side-windows-side=.  A
 file that sets it as a file-local variable always opens on that side,
@@ -233,16 +229,23 @@ whatever the rules say:
   ;; -*- auto-side-windows-side: right; -*-
 #+end_src
 
-=auto-side-windows-display-buffer-on-side= and its four siblings write
-the variable as well: a buffer you send to a side goes there again
-each time it is displayed.  A side that the rules chose is not written
-into the buffer, so a buffer follows a rule you change.
+Every display that names a side writes the variable: the commands
+=auto-side-windows-display-buffer-on-side= and its four siblings, and a
+caller that names the side, see below.  A buffer you send to a side
+then goes there each time it is displayed.  A side that the rules
+chose is not written, and a move along a side or a toggle writes
+nothing either.  So a buffer follows a rule you change.  To give a
+buffer back to the rules, kill the variable:
+
+#+begin_src emacs-lisp
+  (kill-local-variable 'auto-side-windows-side)
+#+end_src
 
 ** Customization
 
-Every option starts empty, so the package changes nothing until you
-tell it to: no rules, no window parameters, no sizes, and no sizes
-remembered.  =M-x customize-group RET auto-side-windows RET= shows them
+Every option except =auto-side-windows-resize-commands= starts empty.
+The package changes nothing until you tell it to: no rules, no window
+parameters, no sizes, and no sizes remembered.  =M-x customize-group RET auto-side-windows RET= shows them
 all:
 
 | Option                                                      | Type          | Description                                                                            |
@@ -251,14 +254,15 @@ all:
 | =auto-side-windows-{top,bottom,left,right}-buffer-modes=      | list (symbol) | the major modes of that side                          |
 | =auto-side-windows-{top,bottom,left,right}-extra-conditions=  | list (sexp)   | more conditions of that side, as =buffer-match-p= takes them |
 | =auto-side-windows-{top,bottom,left,right}-window-parameters= | alist         | the window parameters of that side                    |
-| =auto-side-windows-{top,bottom}-height=                       | number, function | how tall that side starts                          |
-| =auto-side-windows-{left,right}-width=                        | number, function | how wide that side starts                          |
+| =auto-side-windows-{top,bottom}-height=                       | number, float, function | how tall that side starts                   |
+| =auto-side-windows-{left,right}-width=                        | number, float, function | how wide that side starts                   |
 | =auto-side-windows-remember-sizes=                            | boolean       | whether a side keeps the size you give it            |
+| =auto-side-windows-resize-commands=                           | list (function) | the commands whose resize is remembered            |
 | =auto-side-windows-{top,bottom,left,right}-alist=             | alist         | the action alist of that side; the size belongs above |
 | =auto-side-windows-common-window-parameters=                  | alist         | the window parameters of each side window             |
 | =auto-side-windows-common-alist=                              | alist         | the action alist of each side window                  |
 | =auto-side-windows-reuse-mode-window=                         | alist         | the sides that reuse a window with the same major mode |
-| =auto-side-windows-{before,after}-display-hook=               | hook          | runs before and after a buffer goes to a side window  |
+| =auto-side-windows-{before,after}-display-hook=               | hook          | runs before the package displays a buffer, and after it shows one in a side window |
 | =auto-side-windows-{before,after}-toggle-hook=                | hook          | runs before and after the toggle of a side window     |
 
 ** Commands
@@ -278,8 +282,9 @@ all:
 
 ** The size of a side
 
-The size a side starts with is its own option: a number, or a function
-of one window as a =window-height= in an action alist takes one.
+The size a side starts with is its own option: a number, a share of the
+frame as a float, or a function of one window, as a =window-height= in
+an action alist takes them.
 
 #+begin_src emacs-lisp
   (setq auto-side-windows-left-width 40
@@ -355,11 +360,11 @@ line of your side windows, on the *press* rather than the drag:
 #+begin_src emacs-lisp
   (defvar my-side-window-drag-map
     (let ((map (make-sparse-keymap)))
-      (define-key map [down-mouse-1] #'auto-side-windows-drag-slot)
+      (define-key map [header-line down-mouse-1] #'auto-side-windows-drag-slot)
       map))
 
   ;; somewhere in the header line of a side window
-  (propertize " " 'keymap my-side-window-drag-map
+  (propertize " " 'local-map my-side-window-drag-map
               'help-echo "Drag to another slot")
 #+end_src
 
@@ -384,16 +389,13 @@ this package are display actions:
 #+end_src
 
 =auto-side-windows-side= names the side, whatever the rules say, and
-=slot= names the slot.  The key is this package's own, and not the
-=side= of an action alist, because =side= is each package's own word
-for a place on the frame: a side window to
-=display-buffer-in-side-window=, a direction to
-=display-buffer-in-direction=, a way to split to a package that splits
-for itself.
+=slot= names the slot.  The buffer keeps the side from then on.  The
+key is not the =side= of an action alist, because other packages use
+=side= for their own purposes.
 
 The search for a free slot counts up from zero, so a negative slot is
 one no other buffer is ever given.  =dirvish-side= asks for slot -1 and
-keeps it to itself that way, without a rule of ours.
+keeps it to itself that way, without a rule of this package.
 
 ** Integration with Other Packages
 
@@ -408,7 +410,6 @@ same lists that you gave =auto-side-windows=:
 #+begin_src emacs-lisp
   (use-package popper
     :after auto-side-windows ; Ensure auto-side-windows variables are defined
-    :hook (auto-side-windows-mode . popper-mode) ; Activate popper alongside
     :custom
     ;; Tell Popper to consider buffers matching auto-side-windows rules as popups
     (popper-reference-buffers
@@ -422,10 +423,9 @@ same lists that you gave =auto-side-windows=:
     (popper-mode +1) ; Enable popper-mode
     (popper-echo-mode +1) ; Optional: echo area notifications
     :bind ;; Example bindings
-    (:map your-prefix-map ;; e.g. my/toggle-map
-          ("p" . popper-toggle)      ; Toggle last popup
-          ("P" . popper-toggle-type) ; Toggle popups of specific type
-          ("C-p" . popper-cycle)))   ; Cycle through visible popups
+    (("C-c p p" . popper-toggle)      ; Toggle last popup
+     ("C-c p t" . popper-toggle-type) ; Toggle popups of specific type
+     ("C-c p c" . popper-cycle)))     ; Cycle through visible popups
 #+end_src
 
 You can then hide, show and cycle the side windows with the commands
@@ -438,7 +438,7 @@ The command below switches to a popup buffer that is buried:
     "Switch to buried popup BUFFER."
     (interactive
      (list
-      (when-let ((buried-popups (progn (popper--find-buried-popups)
+      (when-let* ((buried-popups (progn (popper--find-buried-popups)
                                        (mapcar #'cdr
                                                (alist-get (funcall popper-group-function)
                                                           popper-buried-popup-alist nil nil 'equal))))
@@ -481,7 +481,8 @@ These settings send the buffers of magit and org-mode to a side:
   (setopt org-src-window-setup 'plain)
   (setopt auto-side-windows-top-buffer-names '("^\\*Org Agenda\\*$"
                                                "^\\*Org Src.*\\*"
-                                               "^\\*Org-Babel Error Output\\*"))
+                                               "^\\*Org-Babel Error Output\\*"
+                                               "^COMMIT_EDITMSG$"))
 
   ;; Magit: Display Magit diff/status in the right side window, edit commit msg on top
   (setopt magit-display-buffer-function #'display-buffer
@@ -492,8 +493,6 @@ These settings send the buffers of magit and org-mode to a side:
                                                  magit-log-mode
                                                  magit-diff-mode
                                                  magit-process-mode))
-  (setopt auto-side-windows-top-buffer-names
-          '("^COMMIT_EDITMSG$"))
 #+end_src
 
 The commit message goes to the top, and the other magit buffers go to
@@ -530,13 +529,12 @@ name a side.
 ** Bonus: Boxes around side windows
 
 [[https://github.com/MArpogaus/window-box][window-box]] draws a box around a window and keeps what your mode line
-and your header line show.  One hook boxes each buffer that goes to a
-side window:
+and your header line show.  A predicate boxes each side window:
 
 #+begin_src emacs-lisp
-  (add-hook 'auto-side-windows-after-display-hook
-            (lambda (buffer &rest _)
-              (with-current-buffer buffer (window-box-mode 1))))
+  (setopt window-box-window-predicate
+          (lambda (window) (window-parameter window 'window-side)))
+  (global-window-box-mode 1)
 #+end_src
 
 ** Known Limits
@@ -559,8 +557,7 @@ the move commands and the drag, and the toggle.
 
 ** Contributions
 
-Contributions are greatly appreciated!  Feel free to check the
-[[https://github.com/MArpogaus/auto-side-windows/issues][issues page]] or submit a [[https://github.com/MArpogaus/auto-side-windows/pulls][pull request]].
+Report a problem on the [[https://github.com/MArpogaus/auto-side-windows/issues][issues page]], and send a change as a [[https://github.com/MArpogaus/auto-side-windows/pulls][pull request]].
 
 ** Acknowledgments
 

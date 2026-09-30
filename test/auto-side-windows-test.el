@@ -298,6 +298,7 @@ either lands on the other."
       ;; and a window that stands alone on its side has no neighbour
       (delete-window three)
       (should-not (auto-side-windows--slot-neighbour one 1)))))
+
 (ert-deftest auto-side-windows-test-move-to-next-slot-swaps ()
   "Moving a buffer along the side brings the other buffer back the other way.
 Slot zero holds A and slot three holds B; after the move slot three
@@ -326,6 +327,7 @@ into the windows that were there."
     ;; a move keeps no side in the buffers: the rules still decide
     (should-not (buffer-local-value 'auto-side-windows-side a))
     (should-not (buffer-local-value 'auto-side-windows-side b))))
+
 (ert-deftest auto-side-windows-test-move-needs-a-side-window ()
   "The command says so where there is no side window to move."
   (save-window-excursion
@@ -335,6 +337,7 @@ into the windows that were there."
   (auto-side-windows-test--with-sides
     (select-window (auto-side-windows-test--side-window a 'left 0))
     (should-error (auto-side-windows-move-to-next-slot) :type 'user-error)))
+
 (ert-deftest auto-side-windows-test-drag-swaps-two-slots ()
   "A drag from the header line of one slot to another swaps the buffers."
   (auto-side-windows-test--with-sides
@@ -344,6 +347,7 @@ into the windows that were there."
        (auto-side-windows-test--drag one three))
       (should (eq (auto-side-windows-test--in-slot 'left 3) a))
       (should (eq (auto-side-windows-test--in-slot 'left 0) b)))))
+
 (ert-deftest auto-side-windows-test-drag-stays-on-its-side ()
   "A drag that ends outside the side, or where it began, changes nothing.
 A slot belongs to a side, so the two ends of a drag have to be side
@@ -362,6 +366,7 @@ windows of the same side."
       ;; and a drag that ends where it began
       (auto-side-windows-drag-slot (auto-side-windows-test--drag left left))
       (should (eq (window-buffer left) a)))))
+
 (ert-deftest auto-side-windows-test-the-package-binds-no-key ()
   "The package brings commands and no keys of its own.
 The header line of a side window is where a drag belongs, and that
@@ -382,19 +387,20 @@ slot still has the height the reader gave it."
     (let ((auto-side-windows-remember-sizes t)
           (one (auto-side-windows-test--side-window a 'left 0)))
       (auto-side-windows-test--side-window b 'left 3)
-      (when (window-resizable one 4)
-        (let ((last-command 'enlarge-window))
-          (window-resize one 4 nil t)
-          (auto-side-windows--measure nil))
-        (let ((tall (window-total-height one)))
-          (select-window one)
-          (auto-side-windows-move-to-next-slot)
-          (should (equal (auto-side-windows-test--in-slot 'left 0) b))
-          (should (= (window-total-height
-                      (seq-find (lambda (win)
-                                  (equal (auto-side-windows--slot win) 0))
-                                (auto-side-windows--side-windows 'left)))
-                     tall)))))))
+      (skip-unless (window-resizable one 4))
+      (let ((last-command 'enlarge-window))
+        (window-resize one 4 nil t)
+        (auto-side-windows--measure nil))
+      (let ((tall (window-total-height one)))
+        (select-window one)
+        (auto-side-windows-move-to-next-slot)
+        (should (equal (auto-side-windows-test--in-slot 'left 0) b))
+        (should (= (window-total-height
+                    (seq-find (lambda (win)
+                                (equal (auto-side-windows--slot win) 0))
+                              (auto-side-windows--side-windows 'left)))
+                   tall))))))
+
 (ert-deftest auto-side-windows-test-measure-keeps-what-a-reader-set ()
   "A resize by the reader is measured, and no other size change is.
 A window that fits itself to its text, as a transient menu does, and a
@@ -608,8 +614,8 @@ window here."
 (ert-deftest auto-side-windows-test-a-command-from-lisp-leaves-other-windows ()
   "A buffer sent to a side from Lisp takes no window that shows another.
 The command works on the current buffer, and for a command that is what
-the selected window shows.  Called from Lisp with another buffer current
-it deleted the selected side window, whichever buffer was in it."
+the selected window shows.  Called from Lisp with another buffer current,
+the selected side window stays."
   (auto-side-windows-test--with-sides
     (let ((theirs (auto-side-windows-test--side-window b 'left 0)))
       (select-window theirs)

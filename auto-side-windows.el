@@ -34,7 +34,7 @@
 ;; side the rules do not name, and move a buffer from slot to slot along
 ;; its side, by key or by a drag of the header line.
 
-;; The width of a side and the height of each of its slots can be
+;; The size of a side and the size of each of its slots can be
 ;; remembered per tab, so a layout you resize comes back as you left it.
 
 ;;; Code:
@@ -263,10 +263,10 @@ See `auto-side-windows-top-alist'.  The size belongs to
 
 (defcustom auto-side-windows-common-window-parameters nil
   "Custom window parameters for all side windows.
-These parameters will be applied to all side windows created by
-`auto-side-windows-mode'.  A side window is an ordinary window until you
-say otherwise here; `no-other-window', `tab-line-format' and
-`mode-line-format' are the ones a panel usually wants."
+The package applies these parameters to every side window it makes.
+A side window is an ordinary window until you say otherwise here;
+`no-other-window', `tab-line-format' and `mode-line-format' are the
+ones a side window usually wants."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -543,7 +543,7 @@ the mouse, which only a drag makes a size change of."
       (eq (event-basic-type last-input-event) 'mouse-movement)))
 
 (defun auto-side-windows--measured (windows across entry)
-  "Return the record of a side of WINDOWS, which runs ACROSS or not.
+  "Return the record of a side of WINDOWS; ACROSS when its size is a width.
 ENTRY is the record the side had.  A slot that is empty now keeps the
 size it had when it was last shown."
   (let ((measured (mapcar (lambda (window)
@@ -587,8 +587,9 @@ size it has now."
 (defun auto-side-windows--size (across kind size)
   "Return the action alist entry that gives SIZE, or nil for none.
 KIND is `along' for the length of the side itself and `slot' for the
-one slot; ACROSS says whether the side runs across the frame, which is
-what decides whether a length is a width or a height."
+one slot.  ACROSS is non-nil when the size of the side is a width, as
+`auto-side-windows--across-p' answers, and it decides whether a length
+is a width or a height."
   (when size
     (let ((horizontal (eq (and across t) (eq kind 'along))))
       (list (cons (if horizontal 'window-width 'window-height)
@@ -610,11 +611,11 @@ Nil where nothing was measured, or where the sizes are not remembered."
 ALIST is the caller's, and Emacs reads the first entry of a name it
 finds.  SIDE and SLOT therefore go first: they are the answer of this
 package, and they carry the slot the caller asked for.  The window
-parameters follow as one entry — the common ones, the side's, then the
-caller's, which win, because the parameters are set in the order of the
-list.
+parameters follow as one entry.  It holds the common ones, the side's,
+then the caller's, and the caller's win, because the parameters are set
+in the order of the list.
 
-Behind ALIST the order is the order of the say: what the reader last
+Behind ALIST the order is the order of priority: what the reader last
 resized beats the size option of the side, and that beats its action
 alist."
   (let ((side-size (auto-side-windows--side-option side 'size)))
@@ -646,7 +647,7 @@ buffer is to go there."
     shown))
 
 (defun auto-side-windows--claim (buffer window side alist)
-  "Make WINDOW the side window of BUFFER on SIDE.
+  "Finish the display of BUFFER in WINDOW, a side window on SIDE.
 ALIST is the action alist of the caller.  A side it names is written
 into `auto-side-windows-side' of BUFFER, the size along the side is
 preserved while `auto-side-windows-remember-sizes' is on, and
@@ -660,17 +661,17 @@ preserved while `auto-side-windows-remember-sizes' is on, and
 
 (defun auto-side-windows--display-buffer (buffer alist)
   "Display BUFFER in a side window, for `display-buffer-alist'.
-ALIST is the action alist of the display.  The side comes from an
-`auto-side-windows-side' in ALIST or from the rules, and the slot from a
-`slot' in ALIST or from `auto-side-windows--get-next-free-slot'.  Nil
-where no side answers: Emacs then displays the buffer the way it would
-without this package.
+ALIST is the action alist of the display.  The side comes from the side
+ALIST names or from the rules, and the slot from a `slot' in ALIST or
+from `auto-side-windows--get-next-free-slot'.  Nil where no side
+answers: Emacs then displays the buffer the way it would without this
+package.
 
 `auto-side-windows-before-display-hook' runs, and
-`display-buffer-in-side-window' makes the window — or the window that
-already shows BUFFER is reused, unless the caller named a slot.  A
-caller that names one means it: the buffer moves there even where a
-window already shows it.
+`display-buffer-in-side-window' makes the window.  The window that
+already shows BUFFER is reused instead, unless the caller named a slot:
+a caller that names one means it, and the buffer moves there.  An
+ordinary window is reused only where ALIST names no side.
 
 A reused window can be an ordinary one, and a side that allows no slot
 gives no window at all.  `auto-side-windows-after-display-hook' runs
@@ -928,10 +929,12 @@ moves them.
 The package binds no key.  Put this on the header line of your side
 windows, where a press is yours to give away:
 
-    (keymap-set my-header-line-map \"<down-mouse-1>\"
-                #\\='auto-side-windows-drag-slot)"
+    (keymap-set my-header-line-map \"<header-line> <down-mouse-1>\"
+                #\\='auto-side-windows-drag-slot)
+
+and give the part of the header line the map as its `local-map'."
   (interactive "e")
-  ;; the side first: a press this command does not answer is not ours to follow
+  ;; the side first: a press outside a side window is left to others
   (when-let* ((from (posn-window (event-start event)))
               ((windowp from))
               (side (window-parameter from 'window-side))

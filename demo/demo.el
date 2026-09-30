@@ -14,9 +14,11 @@
 
 ;;; Code:
 (require 'use-package)
+(add-to-list 'load-path
+             (file-name-directory (directory-file-name
+                                   (file-name-directory load-file-name))))
 (use-package auto-side-windows
   :ensure nil
-  :load-path "/home/marcel/.emacs.d/packages/auto-side-windows"
   :custom
   ;; Buffers move to a side when `switch-to-buffer' shows them too.
   (switch-to-buffer-obey-display-actions t)
