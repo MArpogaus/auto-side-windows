@@ -155,9 +155,9 @@ See `auto-side-windows-top-window-parameters'."
 (defcustom auto-side-windows-top-alist nil
   "Action alist entries for top side windows.
 The entries apply when a buffer is displayed in a top side window, and
-they win over `auto-side-windows-common-alist'.  The height of a window belongs
-to `auto-side-windows-top-height', which wins over a `window-height'
-here."
+they win over `auto-side-windows-common-alist'.  The height of a window
+belongs to `auto-side-windows-top-height', which wins over a
+`window-height' here."
   :type 'alist
   :group 'auto-side-windows)
 
@@ -535,19 +535,20 @@ cannot hold any more, after the frame shrank, gives as much as fits."
 `auto-side-windows--note-resize' sets it after a command, and the next
 measurement takes it off, so a size change that a timer or a process
 makes later is not the reader's.  A resize command that changed no size
-causes no measurement, and the mark then waits for the next one.")
+causes no measurement, and the next command takes the mark off.")
 
 (defun auto-side-windows--note-resize ()
   "Note whether the reader resized, for `post-command-hook'.
-Each command sets the mark anew, so a mark no size change took off lasts
-until the next command, and no longer.
 A resize is the reader's when the command is one of
 `auto-side-windows-resize-commands', or when the event is a move of the
-mouse, which only a drag makes a size change of."
-  (setq auto-side-windows--resized
-        (and (or (memq this-command auto-side-windows-resize-commands)
-                 (mouse-movement-p last-input-event))
-             t)))
+mouse, which only a drag makes a size change of.  Any other command
+takes the mark off, except a mouse event: the release that ends a drag
+can come before the redisplay that measures its last move."
+  (cond ((or (memq this-command auto-side-windows-resize-commands)
+             (mouse-movement-p last-input-event))
+         (setq auto-side-windows--resized t))
+        ((not (mouse-event-p last-input-event))
+         (setq auto-side-windows--resized nil))))
 
 (defun auto-side-windows--changed-size (window horizontal)
   "Return the width of WINDOW if HORIZONTAL, else its height, if it changed.

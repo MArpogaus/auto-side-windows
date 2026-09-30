@@ -117,8 +117,7 @@ go first in the alist it builds."
         (should (eq (alist-get 'slot alist) 0))))))
 
 (ert-deftest auto-side-windows-test-the-side-alist-beats-the-common-one ()
-  "An entry of the action alist of a side wins over the common one.
-The window parameters go the same way: the side's win."
+  "An entry of the action alist of a side wins over the common one."
   (let ((auto-side-windows-common-alist '((dedicated . t)))
         (auto-side-windows-left-alist '((dedicated . nil))))
     (should-not (alist-get 'dedicated
@@ -447,6 +446,13 @@ event is what tells."
     (let ((this-command 'forward-char))
       (auto-side-windows--note-resize))
     (should-not auto-side-windows--resized)
+    ;; the release that ends a drag keeps the mark of its last move
+    (setq auto-side-windows--resized t)
+    (let ((this-command (lambda () (interactive)))
+          (last-input-event '(drag-mouse-1 (nil) (nil))))
+      (auto-side-windows--note-resize))
+    (should auto-side-windows--resized)
+    (setq auto-side-windows--resized nil)
     (let ((this-command (lambda () (interactive)))
           (last-input-event '(mouse-movement (nil))))
       (auto-side-windows--note-resize))
