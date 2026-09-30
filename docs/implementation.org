@@ -198,8 +198,10 @@ A marked measurement records only the sizes that changed since the last
 redisplay, as =window-pixel-width-before-size-change= and its sibling
 tell.  A wider right side makes a bottom window between the sides
 narrower, and the height a caller fitted that window to stays out of
-the record.  A side of one window records no slot size at all: its
-length is what the frame and the other sides leave it.
+the record.  The slots of a side are recorded only where the side kept
+its length, so only a divider between two of its slots counts.  A
+taller bottom side makes the left slots shorter, and those heights are
+the frame's.
 
 A remembered size that the frame cannot hold any more gives as much as
 fits, through =window-resizable=.

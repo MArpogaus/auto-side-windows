@@ -124,6 +124,27 @@ go first in the alist it builds."
                            (auto-side-windows--action-alist 'left 0 nil)
                            'absent))))
 
+(ert-deftest auto-side-windows-test-a-send-keeps-the-tab ()
+  "A buffer sent to a side from a tab of its own leaves the tab open.
+The window came with the tab, and a quit would close the tab with it."
+  (auto-side-windows-mode 1)
+  (let ((buffer (get-buffer-create "*auto-side-windows-tab*")))
+    (unwind-protect
+        (progn
+          (tab-bar-mode 1)
+          (switch-to-buffer-other-tab buffer)
+          (let ((tabs (length (tab-bar-tabs))))
+            (with-current-buffer buffer
+              (auto-side-windows-display-buffer-left))
+            (should (= (length (tab-bar-tabs)) tabs))
+            (should (eq (window-parameter (get-buffer-window buffer) 'window-side)
+                        'left))))
+      (delete-window (get-buffer-window buffer))
+      (while (> (length (tab-bar-tabs)) 1) (tab-bar-close-tab))
+      (tab-bar-mode -1)
+      (kill-buffer buffer)
+      (auto-side-windows-mode -1))))
+
 (ert-deftest auto-side-windows-test-no-side-no-move ()
   "An empty answer to the side prompt moves nothing and says so."
   (cl-letf (((symbol-function 'completing-read) (lambda (&rest _) "")))
@@ -264,6 +285,23 @@ deleted one by one rather than with `delete-other-windows'."
        (kill-buffer a)
        (kill-buffer b))))
 
+(defun auto-side-windows-test--snapshot ()
+  "Return each window with its width and height, as a redisplay sees them."
+  (mapcar (lambda (window)
+            (list window (window-pixel-width window) (window-pixel-height window)))
+          (window-list)))
+
+(defun auto-side-windows-test--measure-since (snapshot)
+  "Measure a resize by the reader, as the redisplay after SNAPSHOT would.
+Batch Emacs does not redisplay, so the sizes before the change come from
+SNAPSHOT."
+  (cl-letf (((symbol-function 'window-pixel-width-before-size-change)
+             (lambda (window) (or (nth 1 (assq window snapshot)) 0)))
+            ((symbol-function 'window-pixel-height-before-size-change)
+             (lambda (window) (or (nth 2 (assq window snapshot)) 0))))
+    (let ((auto-side-windows--resized t))
+      (auto-side-windows--measure nil))))
+
 (defun auto-side-windows-test--side-window (buffer side slot)
   "Show BUFFER in a side window on SIDE in SLOT, and return the window."
   (display-buffer-in-side-window buffer `((side . ,side) (slot . ,slot))))
@@ -387,9 +425,9 @@ slot still has the height the reader gave it."
           (one (auto-side-windows-test--side-window a 'left 0)))
       (auto-side-windows-test--side-window b 'left 3)
       (skip-unless (window-resizable one 4))
-      (window-resize one 4 nil t)
-      (let ((auto-side-windows--resized t))
-        (auto-side-windows--measure nil))
+      (let ((snapshot (auto-side-windows-test--snapshot)))
+        (window-resize one 4 nil t)
+        (auto-side-windows-test--measure-since snapshot))
       (let ((tall (window-total-height one)))
         (select-window one)
         (auto-side-windows-move-to-next-slot)
@@ -415,14 +453,14 @@ comes later, from a timer or a process, is not the reader's either."
       (window-resize one 2 nil t)
       (auto-side-windows--measure nil)
       (should-not (auto-side-windows--geometry))
-      (window-resize one 2 nil t)
-      (setq auto-side-windows--resized t)
-      (auto-side-windows--measure nil)
-      (should-not auto-side-windows--resized)
+      (let ((snapshot (auto-side-windows-test--snapshot)))
+        (window-resize one 2 nil t)
+        (auto-side-windows-test--measure-since snapshot))
       (let* ((entry (alist-get 'left (auto-side-windows--geometry)))
              (slots (alist-get 'slots entry)))
         (should (= (alist-get 0 slots) (window-pixel-height one)))
-        (should (= (alist-get 'size entry) (window-pixel-width one)))
+        ;; the width of the side did not change, so it is no record
+        (should-not (alist-get 'size entry))
         ;; a slot goes: the sizes stay
         (delete-window one)
         (auto-side-windows--measure nil)
@@ -462,34 +500,53 @@ event is what tells."
   "A resize records the sizes that changed and keeps the others.
 A wider right side makes a bottom window narrower, and its height is
 still the one the caller fitted it to: that height is not the reader's.
-Nor is its width: a side of one window has the length the frame and the
-other sides leave it.
+Nor is its width: the length of the bottom side changed, and that is the
+work of the right side.
 The left and the right side run the full height of the frame here, so
 the bottom side is between them."
   (auto-side-windows-test--with-sides
     (let* ((auto-side-windows-remember-sizes t)
            (window-sides-vertical t)
            (right (auto-side-windows-test--side-window a 'right 0))
-           (bottom (auto-side-windows-test--side-window b 'bottom 0))
-           before)
-      (setq before (mapcar (lambda (window)
-                             (list window (window-pixel-width window)
-                                   (window-pixel-height window)))
-                           (list right bottom)))
+           (_bottom (auto-side-windows-test--side-window b 'bottom 0))
+           (snapshot (auto-side-windows-test--snapshot)))
       (skip-unless (window-resizable right 2 t))
       (window-resize right 2 t)
-      (cl-letf (((symbol-function 'window-pixel-width-before-size-change)
-                 (lambda (window) (nth 1 (assq window before))))
-                ((symbol-function 'window-pixel-height-before-size-change)
-                 (lambda (window) (nth 2 (assq window before)))))
-        (let ((auto-side-windows--resized t))
-          (auto-side-windows--measure nil)))
+      (auto-side-windows-test--measure-since snapshot)
       (let ((geometry (auto-side-windows--geometry)))
         (should (= (alist-get 'size (alist-get 'right geometry))
                    (window-pixel-width right)))
         (should-not (alist-get 'size (alist-get 'bottom geometry)))
         ;; and the width of the one bottom window is the frame's to say
         (should-not (alist-get 'slots (alist-get 'bottom geometry)))))))
+
+(ert-deftest auto-side-windows-test-a-slot-length-is-kept-within-its-side ()
+  "The slots of a side are recorded only when the side kept its length.
+A taller bottom side makes both left slots shorter, and those heights
+are not the reader's.  A divider between the two slots moves within the
+side, and that is."
+  (auto-side-windows-test--with-sides
+    (let* ((auto-side-windows-remember-sizes t)
+           (bottom-buffer (get-buffer-create "*slot c*"))
+           (one (auto-side-windows-test--side-window a 'left 0))
+           (bottom (progn (auto-side-windows-test--side-window b 'left 1)
+                          (auto-side-windows-test--side-window
+                           bottom-buffer 'bottom 0)))
+           (snapshot (auto-side-windows-test--snapshot)))
+      (unwind-protect
+          (progn
+            (skip-unless (window-resizable bottom 2))
+            (window-resize bottom 2)
+            (auto-side-windows-test--measure-since snapshot)
+            (should-not (alist-get 'slots (alist-get 'left (auto-side-windows--geometry))))
+            (setq snapshot (auto-side-windows-test--snapshot))
+            (skip-unless (window-resizable one 1))
+            (window-resize one 1)
+            (auto-side-windows-test--measure-since snapshot)
+            (should (= (alist-get 0 (alist-get 'slots (alist-get 'left (auto-side-windows--geometry))))
+                       (window-pixel-height one))))
+        (delete-window bottom)
+        (kill-buffer bottom-buffer)))))
 
 (ert-deftest auto-side-windows-test-sizes-name-the-right-side ()
   "The size of a side and the size of a slot are the two directions.

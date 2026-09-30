@@ -550,23 +550,41 @@ can come before the redisplay that measures its last move."
         ((not (mouse-event-p last-input-event))
          (setq auto-side-windows--resized nil))))
 
+(defun auto-side-windows--size-before (window horizontal)
+  "Return the size of WINDOW at the last redisplay, in pixels.
+The width if HORIZONTAL, else the height."
+  (if horizontal
+      (window-pixel-width-before-size-change window)
+    (window-pixel-height-before-size-change window)))
+
 (defun auto-side-windows--changed-size (window horizontal)
   "Return the width of WINDOW if HORIZONTAL, else its height, if it changed.
 Nil when the size is the one the last redisplay saw."
   (let ((now (auto-side-windows--window-size window horizontal)))
-    (unless (= now (if horizontal
-                       (window-pixel-width-before-size-change window)
-                     (window-pixel-height-before-size-change window)))
+    (unless (= now (auto-side-windows--size-before window horizontal))
       now)))
+
+(defun auto-side-windows--steady-p (windows horizontal)
+  "Return non-nil when WINDOWS together kept their length.
+The length is the sum of their widths if HORIZONTAL, else of their
+heights, now and at the last redisplay."
+  (= (apply #'+ (mapcar (lambda (window)
+                          (auto-side-windows--window-size window horizontal))
+                        windows))
+     (apply #'+ (mapcar (lambda (window)
+                          (auto-side-windows--size-before window horizontal))
+                        windows))))
 
 (defun auto-side-windows--measured (windows across entry)
   "Return the record of a side of WINDOWS; ACROSS when its size is a width.
 ENTRY is the record the side had.  A size that did not change keeps
-what ENTRY says.  A side of one window has no slot size of its own: the
-frame and the other sides decide its length, so it is not recorded.  A
-slot that is empty now keeps the size it had when it was last shown."
+what ENTRY says.  The slots are recorded only where the side kept its
+length: then a divider between two slots moved.  Where the length
+changed, another side or the frame changed it, and the lengths of the
+slots are not the reader's.  A slot that is empty now keeps the size it
+had when it was last shown."
   (let ((size (auto-side-windows--changed-size (car windows) across))
-        (measured (and (cdr windows)
+        (measured (and (auto-side-windows--steady-p windows (not across))
                        (delq nil (mapcar
                                   (lambda (window)
                                     (when-let* ((size (auto-side-windows--changed-size
@@ -781,6 +799,15 @@ WINDOW is selected."
       (set-window-point now point)
       (select-window now))))
 
+(defun auto-side-windows--leave (window)
+  "Take the current buffer out of WINDOW, an ordinary window.
+A window made for the buffer goes.  Any other window shows the buffer it
+showed before: a window that came with its own tab or frame keeps them,
+where `quit-restore-window' would close the tab or hide the frame."
+  (if (eq (car (window-parameter window 'quit-restore)) 'window)
+      (quit-restore-window window 'bury)
+    (switch-to-prev-buffer window 'bury)))
+
 ;;;; Commands
 ;;;###autoload
 (defun auto-side-windows-move-to-next-slot (&optional arg)
@@ -837,7 +864,7 @@ It runs `auto-side-windows-before-toggle-hook' before the move and
       (let ((side (buffer-local-value 'auto-side-windows--detached buffer)))
         (with-current-buffer buffer
           (kill-local-variable 'auto-side-windows--detached))
-        (quit-restore-window window 'bury)
+        (auto-side-windows--leave window)
         (pop-to-buffer buffer `(auto-side-windows--display-buffer
                                 (auto-side-windows--side . ,side)))))
      (t
@@ -869,7 +896,7 @@ buffer and `auto-side-windows-after-display-hook' after."
     (when (eq (window-buffer window) buffer)
       (if (window-parameter window 'window-side)
           (delete-window window)
-        (quit-restore-window window 'bury)))
+        (auto-side-windows--leave window)))
     (with-current-buffer buffer
       (kill-local-variable 'auto-side-windows--detached))
     (pop-to-buffer buffer `(auto-side-windows--display-buffer
