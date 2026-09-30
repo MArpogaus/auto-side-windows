@@ -435,21 +435,6 @@ Nil is no limit, which is what a nil entry in that variable means."
   (nth (pcase side ('left 0) ('top 1) ('right 2) ('bottom 3))
        window-sides-slots))
 
-(defun auto-side-windows--slots-in-use (side mode)
-  "Return the slots taken on SIDE, and the lowest one showing MODE.
-As (SLOTS . MODE-SLOT), where MODE-SLOT is nil unless a window on SIDE
-shows a buffer whose major mode is MODE."
-  (let (slots mode-slot)
-    (dolist (window (auto-side-windows--side-windows side))
-      (let ((slot (auto-side-windows--slot window)))
-        (push slot slots)
-        (when (and mode
-                   (eq mode (buffer-local-value 'major-mode
-                                                (window-buffer window)))
-                   (or (null mode-slot) (< slot mode-slot)))
-          (setq mode-slot slot))))
-    (cons (nreverse slots) mode-slot)))
-
 (defun auto-side-windows--lowest-free-slot (used limit)
   "Return the lowest slot that is not in USED, within LIMIT.
 LIMIT of nil is no limit.
@@ -483,13 +468,20 @@ the lowest such slot wins.  Otherwise the lowest free slot is returned.
 When `window-sides-slots' limits the number of slots on SIDE and all of
 them are taken, the last slot is returned and thus reused.  A nil entry
 in that variable means no limit."
-  (let ((in-use (auto-side-windows--slots-in-use
-                 side (and (alist-get side
-                                      auto-side-windows-reuse-mode-window)
-                           (buffer-local-value 'major-mode buffer)))))
-    (or (cdr in-use)
-        (auto-side-windows--lowest-free-slot
-         (car in-use) (auto-side-windows--side-limit side)))))
+  (let* ((windows (auto-side-windows--side-windows side))
+         (mode (and (alist-get side auto-side-windows-reuse-mode-window)
+                    (buffer-local-value 'major-mode buffer)))
+         ;; the windows come in the order of their slots
+         (same (and mode
+                    (seq-find (lambda (window)
+                                (eq mode (buffer-local-value
+                                          'major-mode (window-buffer window))))
+                              windows))))
+    (if same
+        (auto-side-windows--slot same)
+      (auto-side-windows--lowest-free-slot
+       (mapcar #'auto-side-windows--slot windows)
+       (auto-side-windows--side-limit side)))))
 
 ;;;; Geometry
 (defun auto-side-windows--geometry (&optional frame)
@@ -546,7 +538,7 @@ A resize is the reader's when the command is one of
 `auto-side-windows-resize-commands', or when the event is a move of the
 mouse, which only a drag makes a size change of."
   (when (or (memq this-command auto-side-windows-resize-commands)
-            (eq (event-basic-type last-input-event) 'mouse-movement))
+            (mouse-movement-p last-input-event))
     (setq auto-side-windows--resized t)))
 
 (defun auto-side-windows--changed-size (window horizontal)
@@ -720,7 +712,7 @@ returned as it is, as a `:group-function' is asked to do."
   (if transform candidate
     (when-let* ((buffer (get-buffer candidate))
                 (side  (auto-side-windows--get-buffer-side buffer)))
-      (format "%s" side))))
+      (symbol-name side))))
 
 ;;;; Slots
 (defun auto-side-windows--slot (window)

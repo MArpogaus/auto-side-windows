@@ -30,31 +30,19 @@
 (require 'ert)
 (require 'auto-side-windows)
 
-(defmacro auto-side-windows-test--with-rules (rules &rest body)
-  "Evaluate BODY with the side window RULES in effect.
-RULES is a plist of customization symbols and values."
-  (declare (indent 1))
-  `(let ,(let (binds)
-           (while rules
-             (push (list (pop rules) (pop rules)) binds))
-           (nreverse binds))
-     ,@body))
-
 (ert-deftest auto-side-windows-test-side-condition ()
   "The condition of a side covers its names, its modes and its extras."
-  (auto-side-windows-test--with-rules
-      (auto-side-windows-right-buffer-modes '(help-mode)
-                                            auto-side-windows-right-buffer-names '("^\\*foo\\*$")
-                                            auto-side-windows-right-extra-conditions '((major-mode . text-mode)))
+  (let ((auto-side-windows-right-buffer-modes '(help-mode))
+        (auto-side-windows-right-buffer-names '("^\\*foo\\*$"))
+        (auto-side-windows-right-extra-conditions '((major-mode . text-mode))))
     (should (equal (auto-side-windows--side-condition 'right)
                    '(or "^\\*foo\\*$"
                         (derived-mode . help-mode)
                         (major-mode . text-mode)))))
   ;; a side nobody wrote a rule for matches nothing
-  (auto-side-windows-test--with-rules
-      (auto-side-windows-left-buffer-modes nil
-                                           auto-side-windows-left-buffer-names nil
-                                           auto-side-windows-left-extra-conditions nil)
+  (let ((auto-side-windows-left-buffer-modes nil)
+        (auto-side-windows-left-buffer-names nil)
+        (auto-side-windows-left-extra-conditions nil))
     (should (equal (auto-side-windows--side-condition 'left) '(or)))
     (should-not (buffer-match-p (auto-side-windows--side-condition 'left)
                                 (current-buffer)))))
@@ -63,17 +51,15 @@ RULES is a plist of customization symbols and values."
   "A buffer whose name matches a rule goes to that side."
   (with-temp-buffer
     (rename-buffer "*side-test-name*" t)
-    (auto-side-windows-test--with-rules
-        (auto-side-windows-right-buffer-names (list (regexp-quote (buffer-name)))
-                                              auto-side-windows-top-buffer-names nil)
+    (let ((auto-side-windows-right-buffer-names (list (regexp-quote (buffer-name))))
+          (auto-side-windows-top-buffer-names nil))
       (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'right)))))
 
 (ert-deftest auto-side-windows-test-side-by-mode ()
   "A buffer whose major mode matches a rule goes to that side."
   (with-temp-buffer
     (text-mode)
-    (auto-side-windows-test--with-rules
-        (auto-side-windows-bottom-buffer-modes '(text-mode))
+    (let ((auto-side-windows-bottom-buffer-modes '(text-mode)))
       (should (eq (auto-side-windows--get-buffer-side (current-buffer)) 'bottom)))))
 
 (ert-deftest auto-side-windows-test-side-without-rule ()
@@ -118,8 +104,7 @@ A `side' belongs to the caller, says nothing here, and never reaches
 `display-buffer-in-side-window': the side and the slot of this package
 go first in the alist it builds."
   (with-temp-buffer
-    (auto-side-windows-test--with-rules
-        (auto-side-windows-bottom-buffer-modes '(fundamental-mode))
+    (let ((auto-side-windows-bottom-buffer-modes '(fundamental-mode)))
       (should (eq (auto-side-windows--get-buffer-side
                    (current-buffer) '((auto-side-windows-side . top)))
                   'top))
