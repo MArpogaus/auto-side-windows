@@ -233,17 +233,19 @@ size its side names."
 
 (defcustom auto-side-windows-resize-commands
   '(enlarge-window shrink-window
-                   enlarge-window-horizontally shrink-window-horizontally)
+                   enlarge-window-horizontally shrink-window-horizontally
+                   mouse-drag-vertical-line mouse-drag-mode-line mouse-drag-header-line)
   "Commands whose resize of a side window is remembered.
 With `auto-side-windows-remember-sizes' on, a size is remembered when
-one of these commands changed it, or a drag with the mouse did.  Every
-other change is left out: a window that fits itself to its text, as a
-transient menu or `display-warning' does, and the space a closing
-window leaves.  Add the commands you resize windows with, a repeat map
-or a hydra of your own among them.
+one of these commands changed it.  Every other change is left out: a
+window that fits itself to its text, as a transient menu or
+`display-warning' does, and the space a closing window leaves.  Add the
+commands you resize windows with, a repeat map or a hydra of your own
+among them.
 
-A drag is found by its event and not by a command, because Emacs runs
-each move of a drag as a command without a name."
+A command that begins a drag counts for the whole drag: Emacs runs each
+move of the mouse as a command of its own, and the moves after such a
+command count until the release that ends the drag."
   :type '(repeat function)
   :group 'auto-side-windows)
 
@@ -530,26 +532,31 @@ cannot hold any more, after the frame shrank, gives as much as fits."
       (window-resize window (window-resizable window delta horizontal nil t)
                      horizontal nil t))))
 
+(defvar auto-side-windows--resizing nil
+  "Non-nil while a resize command and the mouse moves after it run.")
+
 (defvar auto-side-windows--resized nil
   "Non-nil when the reader resized and the sides are not measured yet.
 `auto-side-windows--note-resize' sets it after a command, and the next
 measurement takes it off, so a size change that a timer or a process
 makes later is not the reader's.  A resize command that changed no size
-causes no measurement, and the next command takes the mark off, unless
-it is the release of a drag.")
+causes no measurement, and the next command takes the mark off.")
 
 (defun auto-side-windows--note-resize ()
   "Note whether the reader resized, for `post-command-hook'.
 A resize is the reader's when the command is one of
-`auto-side-windows-resize-commands', or when the event is a move of the
-mouse, which only a drag makes a size change of.  Any other command
-takes the mark off, except the release that ends a drag: it can come
-before the redisplay that measures the last move."
-  (cond ((or (memq this-command auto-side-windows-resize-commands)
-             (mouse-movement-p last-input-event))
-         (setq auto-side-windows--resized t))
-        ((not (memq 'drag (event-modifiers last-input-event)))
-         (setq auto-side-windows--resized nil))))
+`auto-side-windows-resize-commands', or a move of the mouse after such a
+command, which is how Emacs runs a drag.  The mouse event that ends the
+drag counts as well: it can come before the redisplay that measures the
+last move.  Any other command takes the mark off."
+  (let ((was auto-side-windows--resizing))
+    (setq auto-side-windows--resizing
+          (or (memq this-command auto-side-windows-resize-commands)
+              (and was (mouse-movement-p last-input-event))))
+    (setq auto-side-windows--resized
+          (and (or auto-side-windows--resizing
+                   (and was (mouse-event-p last-input-event)))
+               t))))
 
 (defun auto-side-windows--size-before (window horizontal)
   "Return the size of WINDOW at the last redisplay, in pixels.
@@ -802,15 +809,19 @@ WINDOW is selected."
 
 (defun auto-side-windows--leave (window)
   "Take the current buffer out of WINDOW, an ordinary window.
-A window made for the buffer goes, and so does a dedicated window,
-which can show no other buffer, with the tab or the frame it came with.
-Any other window shows the buffer it showed before: a window that came
-with its own tab or frame keeps them, where `quit-restore-window' would
+A window made for the buffer goes.  A dedicated window, which can show
+no other buffer, goes where that takes no tab and no frame with it.
+Any other window shows the buffer it showed before, dedicated or not: a
+tab or a frame keeps its only window, where `quit-restore-window' would
 close the tab or hide the frame."
-  (if (or (eq (car (window-parameter window 'quit-restore)) 'window)
-          (window-dedicated-p window))
-      (quit-restore-window window 'bury)
-    (switch-to-prev-buffer window 'bury)))
+  (cond ((eq (car (window-parameter window 'quit-restore)) 'window)
+         (quit-restore-window window 'bury))
+        ((and (window-dedicated-p window)
+              (eq (window-deletable-p window) t))
+         (delete-window window))
+        (t
+         (set-window-dedicated-p window nil)
+         (switch-to-prev-buffer window 'bury))))
 
 ;;;; Commands
 ;;;###autoload

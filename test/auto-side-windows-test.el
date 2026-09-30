@@ -126,7 +126,8 @@ go first in the alist it builds."
 
 (ert-deftest auto-side-windows-test-a-send-keeps-the-tab ()
   "A buffer sent to a side from a tab of its own leaves the tab open.
-The window came with the tab, and a quit would close the tab with it."
+The window came with the tab, or it is the only window of a tab and
+dedicated to the buffer, and a quit would close the tab with it."
   (auto-side-windows-mode 1)
   (let ((buffer (get-buffer-create "*auto-side-windows-tab*")))
     (unwind-protect
@@ -138,7 +139,16 @@ The window came with the tab, and a quit would close the tab with it."
               (auto-side-windows-display-buffer-left))
             (should (= (length (tab-bar-tabs)) tabs))
             (should (eq (window-parameter (get-buffer-window buffer) 'window-side)
-                        'left))))
+                        'left))
+            ;; a tab the reader made, with a window dedicated to the buffer
+            (delete-window (get-buffer-window buffer))
+            (tab-bar-new-tab)
+            (switch-to-buffer buffer)
+            (set-window-dedicated-p (selected-window) t)
+            (setq tabs (length (tab-bar-tabs)))
+            (with-current-buffer buffer
+              (auto-side-windows-display-buffer-left))
+            (should (= (length (tab-bar-tabs)) tabs))))
       (delete-window (get-buffer-window buffer))
       (while (> (length (tab-bar-tabs)) 1) (tab-bar-close-tab))
       (tab-bar-mode -1)
@@ -470,38 +480,32 @@ comes later, from a timer or a process, is not the reader's either."
                        slots))))))
 
 (ert-deftest auto-side-windows-test-a-resize-is-noted-after-its-command ()
-  "A resize command and a drag mark a resize, any other command clears it.
-The release that ends a drag is the exception and keeps it; a click
-clears it like a key.
-A drag runs each move of the mouse as a command without a name, so its
-event is what tells."
+  "A resize command marks a resize, and a drag it begins marks its moves.
+Emacs runs each move of a drag as a command without a name, so the moves
+count after a resize command only, and so does the mouse event that
+ends the drag.  A drag that selects text begins with another command and
+marks nothing.  Any other command clears the mark."
   (let ((auto-side-windows--resized nil)
-        (last-input-event ?a))
-    (let ((this-command 'transient-setup))
-      (auto-side-windows--note-resize))
-    (should-not auto-side-windows--resized)
-    (let ((this-command 'enlarge-window))
-      (auto-side-windows--note-resize))
-    (should auto-side-windows--resized)
-    ;; the next command that is no resize takes a mark back that no
-    ;; size change took off
-    (let ((this-command 'forward-char))
-      (auto-side-windows--note-resize))
-    (should-not auto-side-windows--resized)
-    ;; the release that ends a drag keeps the mark of its last move
-    (setq auto-side-windows--resized t)
-    (let ((this-command (lambda () (interactive)))
-          (last-input-event '(drag-mouse-1 (nil) (nil))))
-      (auto-side-windows--note-resize))
-    (should auto-side-windows--resized)
-    (let ((this-command 'push-button)
-          (last-input-event '(mouse-1 (nil))))
-      (auto-side-windows--note-resize))
-    (should-not auto-side-windows--resized)
-    (let ((this-command (lambda () (interactive)))
-          (last-input-event '(mouse-movement (nil))))
-      (auto-side-windows--note-resize))
-    (should auto-side-windows--resized)))
+        (auto-side-windows--resizing nil)
+        (move (lambda () (interactive))))
+    (cl-flet ((note (command event)
+                (let ((this-command command)
+                      (last-input-event event))
+                  (auto-side-windows--note-resize)
+                  auto-side-windows--resized)))
+      (should-not (note 'transient-setup ?a))
+      (should (note 'enlarge-window ?a))
+      (should-not (note 'forward-char ?a))
+      ;; a drag of a divider, released with a plain click
+      (should (note 'mouse-drag-vertical-line '(down-mouse-1 (nil))))
+      (should (note move '(mouse-movement (nil))))
+      (should (note move '(mouse-movement (nil))))
+      (should (note move '(mouse-1 (nil))))
+      (should-not (note 'push-button '(mouse-1 (nil))))
+      ;; a drag that selects text
+      (should-not (note 'mouse-drag-region '(down-mouse-1 (nil))))
+      (should-not (note move '(mouse-movement (nil))))
+      (should-not (note 'mouse-set-region '(drag-mouse-1 (nil) (nil)))))))
 
 (ert-deftest auto-side-windows-test-a-resize-measures-what-changed ()
   "A resize records the sizes that changed and keeps the others.

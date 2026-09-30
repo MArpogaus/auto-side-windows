@@ -172,18 +172,21 @@ of that frame.
 
 It measures only a resize of the reader's.  After each command
 =auto-side-windows--note-resize=, on =post-command-hook=, marks a resize
-in =auto-side-windows--resized= when one of two things holds:
+in =auto-side-windows--resized= when one of three things holds:
 
 - The command is one of =auto-side-windows-resize-commands=.
-- The event is a move of the mouse.  A drag of a divider starts with
-  =mouse-drag-vertical-line= or =mouse-drag-mode-line=, but each move
-  is a command of its own, an anonymous closure of the drag's transient
-  map, so no command name finds it.
+- The event is a move of the mouse, and the commands since the last
+  one of the list were moves too.  A drag of a divider begins with
+  =mouse-drag-vertical-line= or =mouse-drag-mode-line=, and each move
+  after it is a command of its own, an anonymous closure of the drag's
+  transient map.  A drag that selects text begins with
+  =mouse-drag-region= and marks nothing.
+- The event is the mouse event that ends such a drag.  It can come
+  before the redisplay that measures the last move, and it is a plain
+  =mouse-1= where the mouse came back to the place it started.
 
-The next measurement takes the mark off.  The next command that is no
-resize takes it off as well, except the release that ends a drag: it
-can come before the redisplay that measures the last move.
-A size change that a timer or a process makes after that is not the
+The next measurement takes the mark off, and so does the next command
+that is none of these.  A size change that a timer or a process makes after that is not the
 reader's, though =last-command= still names the resize until the next
 key.
 
