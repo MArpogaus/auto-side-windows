@@ -213,8 +213,8 @@ one window; see
 A side window that you resize is measured, and a buffer displayed in
 that side or slot later gets the size back, so it survives a toggle, a
 killed buffer or a move from slot to slot.  A resize is yours when it
-comes from a drag with the mouse or from one of
-`auto-side-windows-resize-commands'.
+comes from one of `auto-side-windows-resize-commands', which include the
+commands that begin a drag of a divider.
 
 The width of a left or a right side and the height of a top or a bottom
 one are also preserved, as `window-preserve-size' does it: when another
@@ -533,7 +533,8 @@ cannot hold any more, after the frame shrank, gives as much as fits."
                      horizontal nil t))))
 
 (defvar auto-side-windows--resizing nil
-  "Non-nil while a resize command and the mouse moves after it run.")
+  "Where a resize is: `begun' after a resize command, `moved' after a move.
+A move of the mouse after either is `moved', and nil is no resize.")
 
 (defvar auto-side-windows--resized nil
   "Non-nil when the reader resized and the sides are not measured yet.
@@ -546,16 +547,18 @@ causes no measurement, and the next command takes the mark off.")
   "Note whether the reader resized, for `post-command-hook'.
 A resize is the reader's when the command is one of
 `auto-side-windows-resize-commands', or a move of the mouse after such a
-command, which is how Emacs runs a drag.  The mouse event that ends the
-drag counts as well: it can come before the redisplay that measures the
-last move.  Any other command takes the mark off."
+command, which is how Emacs runs a drag.  The mouse event that ends a
+drag after a move counts as well: it can come before the redisplay that
+measures the last move.  Any other command takes the mark off, a click
+on a mode line among them, which begins with a drag command and no
+move."
   (let ((was auto-side-windows--resizing))
     (setq auto-side-windows--resizing
-          (or (memq this-command auto-side-windows-resize-commands)
-              (and was (mouse-movement-p last-input-event))))
+          (cond ((memq this-command auto-side-windows-resize-commands) 'begun)
+                ((and was (mouse-movement-p last-input-event)) 'moved)))
     (setq auto-side-windows--resized
           (and (or auto-side-windows--resizing
-                   (and was (mouse-event-p last-input-event)))
+                   (and (eq was 'moved) (mouse-event-p last-input-event)))
                t))))
 
 (defun auto-side-windows--size-before (window horizontal)

@@ -502,6 +502,11 @@ marks nothing.  Any other command clears the mark."
       (should (note move '(mouse-movement (nil))))
       (should (note move '(mouse-1 (nil))))
       (should-not (note 'push-button '(mouse-1 (nil))))
+      ;; a click after a resize command, and a click on a mode line
+      (should (note 'enlarge-window ?a))
+      (should-not (note 'push-button '(mouse-1 (nil))))
+      (should (note 'mouse-drag-mode-line '(down-mouse-1 (nil))))
+      (should-not (note 'mode-line-other-buffer '(mouse-1 (nil))))
       ;; a drag that selects text
       (should-not (note 'mouse-drag-region '(down-mouse-1 (nil))))
       (should-not (note move '(mouse-movement (nil))))
