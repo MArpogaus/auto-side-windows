@@ -325,8 +325,9 @@ one entry that asks its own questions.
 - that a buffer follows a rule the reader changes, that a command or a
   caller which names a side is remembered, and that a move or a toggle
   is not
-- that a command sends a buffer to a side with the mode off, and out of
-  an ordinary window that shows it
+- that a command sends a buffer to a side with the mode off, out of an
+  ordinary window that shows it, and out of a window dedicated to it,
+  and that the toggle takes a buffer back out of such a window
 - the window parameters of a caller, over the ones of the side
 - that an ordinary window that shows a buffer is reused without the
   after-display hook, and that a command called from Lisp leaves the

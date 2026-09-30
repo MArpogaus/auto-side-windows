@@ -698,6 +698,8 @@ goes back to its side, and a buffer sent to a side goes there."
   (auto-side-windows-test--with-sides
     (select-window (auto-side-windows-test--side-window a 'left 0))
     (auto-side-windows-toggle-side-window)
+    ;; a window that was not made for the buffer
+    (set-window-parameter (get-buffer-window a) 'quit-restore nil)
     (set-window-dedicated-p (get-buffer-window a) t)
     (auto-side-windows-toggle-side-window)
     (should (eq (window-parameter (get-buffer-window a) 'window-side) 'left))

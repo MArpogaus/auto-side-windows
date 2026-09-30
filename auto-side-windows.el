@@ -802,12 +802,13 @@ WINDOW is selected."
 
 (defun auto-side-windows--leave (window)
   "Take the current buffer out of WINDOW, an ordinary window.
-A window made for the buffer goes, and so does a window dedicated to
-it, which can show no other.  Any other window shows the buffer it
-showed before: a window that came with its own tab or frame keeps them,
-where `quit-restore-window' would close the tab or hide the frame."
+A window made for the buffer goes, and so does a dedicated window,
+which can show no other buffer, with the tab or the frame it came with.
+Any other window shows the buffer it showed before: a window that came
+with its own tab or frame keeps them, where `quit-restore-window' would
+close the tab or hide the frame."
   (if (or (eq (car (window-parameter window 'quit-restore)) 'window)
-          (not (memq (window-dedicated-p window) '(nil side))))
+          (window-dedicated-p window))
       (quit-restore-window window 'bury)
     (switch-to-prev-buffer window 'bury)))
 
