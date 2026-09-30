@@ -128,6 +128,17 @@ each lands on its side while the editing area stays put.
 =auto-side-windows-toggle-side-window= detaches the current side
 window into a normal one, and puts it back, and
 =auto-side-windows-display-buffer-right= sends any buffer to a side.
+=window-toggle-side-windows=, a command of Emacs, hides every side
+window and shows them again.  To keep the window parameters of the
+sides through that, make them persistent:
+
+#+begin_src emacs-lisp
+  (setopt window-persistent-parameters
+          (append window-persistent-parameters
+                  '((tab-line-format . t)
+                    (header-line-format . t)
+                    (mode-line-format . t))))
+#+end_src
 
 ** Usage
 
@@ -153,7 +164,8 @@ caller that names the side, see below.  A buffer you send to a side
 then goes there each time it is displayed.  A side that the rules
 chose is not written, and a move along a side or a toggle writes
 nothing either.  So a buffer follows a rule you change.
-=auto-side-windows-follow-rules= gives a buffer back to the rules.
+=auto-side-windows-follow-rules= gives a buffer back to the rules; the
+buffer goes to the side of the rules the next time it is displayed.
 
 ** Customization
 
@@ -274,9 +286,9 @@ line of your side windows, on the *press* rather than the drag:
 #+end_src
 
 A binding on the drag does not work: Emacs resizes the window on the
-press and lets no drag event out.  Give the binding a part of the header line that has no other use, a
-stretch of space between the name and the buttons for example: the
-buttons keep their own keymaps.
+press and lets no drag event out.  Give the binding a part of the header
+line that has no other use, a stretch of space between the name and the
+buttons for example: the buttons keep their own keymaps.
 
 A caller can name the side and the slot itself, because the rules of
 this package are display actions:

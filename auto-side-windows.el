@@ -950,7 +950,9 @@ buffer and `auto-side-windows-after-display-hook' after."
 (defun auto-side-windows-follow-rules ()
   "Let the rules decide the side of the current buffer again.
 The command forgets the side the buffer keeps, from a command, a caller
-or a file, and the side it was detached from."
+or a file, and the side it was detached from.  The buffer stays where
+it is, and goes to the side of the rules the next time it is displayed.
+A file that sets the side sets it again when it is reverted."
   (interactive)
   (kill-local-variable 'auto-side-windows-side)
   (kill-local-variable 'auto-side-windows--detached)
