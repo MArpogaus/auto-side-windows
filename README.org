@@ -35,6 +35,7 @@
   - [[#how-it-works][How It Works]]
   - [[#contributions][Contributions]]
   - [[#acknowledgments][Acknowledgments]]
+  - [[#use-of-llm-coding-tools][Use of LLM Coding Tools]]
   - [[#license][License]]
   - [[#contact][Contact]]
 
@@ -456,6 +457,12 @@ This package builds on the work and the writing of others:
 - [[https://karthinks.com/software/emacs-window-management-almanac/][Emacs Window Management Almanac]] by [[https://www.reddit.com/user/karthinks/][u/karthinks]]
 - [[https://www.masteringemacs.org/article/demystifying-emacs-window-manager][Demystifying Emacs's Window Manager]] by [[https://www.reddit.com/user/mickeyp/][u/mickeyp]]
 - [[https://github.com/karthink/.emacs.d/blob/25a0aec771c38e340789d7c304f3e39ff23aee3e/lisp/setup-windows.el#L164][setup-windows.el]] by karthink, for the examples
+
+** Use of LLM Coding Tools
+
+Parts of this package were written with the help of a large
+language model (LLM) coding assistant.  A person reviewed and tested
+every change before it was committed.
 
 ** License
 
