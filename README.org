@@ -43,21 +43,21 @@
 
 [[file:img/demo.gif]]
 
-You write rules for buffer names and for major modes.  A buffer that
+You write rules for buffer names and for major modes. A buffer that
 matches a rule opens in the side window that the rule names: top,
-bottom, left or right.  The editing area in the middle stays where it
+bottom, left or right. The editing area in the middle stays where it
 is.
 
 =display-buffer-alist= does this work in Emacs, and it is hard to
-write by hand.  This package writes the entry for you, from options
+write by hand. This package writes the entry for you, from options
 that name a side.
 
 One command moves a side window into an ordinary window, and back.
 
 *** Layout
 
-The side windows hold what you look at.  The middle of the frame
-holds what you edit.  A layout looks like this:
+The side windows hold what you look at. The middle of the frame
+holds what you edit. A layout looks like this:
 
 #+begin_src
      _________________________________________________
@@ -88,7 +88,7 @@ in reach, and your text stays where it is.
 
 *** Installation
 
-The package is on MELPA.  Install it with the built in package
+The package is on MELPA. Install it with the built in package
 manager, and configure it as shown below:
 
 #+begin_src emacs-lisp
@@ -98,7 +98,7 @@ manager, and configure it as shown below:
 
 *** Example Configuration
 
-A small and complete setup.  =demo/demo.el= records the animation above
+A small and complete setup. =demo/demo.el= records the animation above
 with this configuration.
 
 #+begin_src emacs-lisp
@@ -130,7 +130,7 @@ each lands on its side while the editing area stays put.
 window into a normal one, and puts it back, and
 =auto-side-windows-display-buffer-right= sends any buffer to a side.
 =window-toggle-side-windows=, a command of Emacs, hides every side
-window and shows them again.  To keep the window parameters of the
+window and shows them again. To keep the window parameters of the
 sides through that, make them persistent:
 
 #+begin_src emacs-lisp
@@ -143,15 +143,15 @@ sides through that, make them persistent:
 
 ** Usage
 
-Turn =auto-side-windows-mode= on and write your rules.  A buffer that
-matches a rule then opens in the side window of that rule.  A rule
+Turn =auto-side-windows-mode= on and write your rules. A buffer that
+matches a rule then opens in the side window of that rule. A rule
 matches the name of the buffer or its major mode.
 
-The rules need the mode.  The mode puts one entry into
-=display-buffer-alist=, and that entry sends a buffer to its side.  The
+The rules need the mode. The mode puts one entry into
+=display-buffer-alist=, and that entry sends a buffer to its side. The
 commands that move a buffer to a side work without the mode.
 
-A buffer can also name its side itself, in =auto-side-windows-side=.  A
+A buffer can also name its side itself, in =auto-side-windows-side=. A
 file that sets it as a file-local variable always opens on that side,
 whatever the rules say:
 
@@ -161,10 +161,10 @@ whatever the rules say:
 
 Every display that names a side writes the variable: the commands
 =auto-side-windows-display-buffer-on-side= and its four siblings, and a
-caller that names the side, see below.  A buffer you send to a side
-then goes there each time it is displayed.  A side that the rules
+caller that names the side, see below. A buffer you send to a side
+then goes there each time it is displayed. A side that the rules
 chose is not written, and a move along a side or a toggle writes
-nothing either.  So a buffer follows a rule you change.
+nothing either. So a buffer follows a rule you change.
 =auto-side-windows-follow-rules= gives a buffer back to the rules; the
 buffer goes to the side of the rules the next time it is displayed.
 
@@ -172,7 +172,7 @@ buffer goes to the side of the rules the next time it is displayed.
 
 Every option except =auto-side-windows-resize-commands= starts empty.
 The package changes nothing until you tell it to: no rules, no window
-parameters, no sizes, and no sizes remembered.  =M-x customize-group RET auto-side-windows RET= shows them
+parameters, no sizes, and no sizes remembered. =M-x customize-group RET auto-side-windows RET= shows them
 all:
 
 | Option                                                      | Type          | Description                                                                            |
@@ -223,14 +223,14 @@ an action alist takes them.
                                        (fit-window-to-buffer window 20 5)))
 #+end_src
 
-Put the size here and not in the action alist of the side.  Both are
+Put the size here and not in the action alist of the side. Both are
 read, and this option is the one that wins; a =window-width= or a
 =window-height= left in an =auto-side-windows-*-alist= applies only
 where the option of the side is empty.
 
 Set =auto-side-windows-remember-sizes= and a side window you resize
 keeps its size: the side and each of its slots are measured, and a buffer
-displayed there later gets the size back, to the pixel.  A toggle, a
+displayed there later gets the size back, to the pixel. A toggle, a
 killed buffer and a move from slot to slot therefore leave the layout as
 you set it.
 
@@ -239,22 +239,22 @@ you set it.
 #+end_src
 
 The size of a side is also preserved: when another window closes or the
-frame changes, the editing area takes the difference.  A divider you
+frame changes, the editing area takes the difference. A divider you
 drag still moves.
 
 What is measured is a change you make with one of the commands in
-=auto-side-windows-resize-commands=.  The default list holds
+=auto-side-windows-resize-commands=. The default list holds
 =enlarge-window=, =shrink-window= and their horizontal variants, and the
 commands that begin a drag of a divider, a mode line, a header line or
-a tab line.  Add the commands you resize windows with, such as the ones
-of a hydra.  Other changes are not remembered: a transient menu of 32
+a tab line. Add the commands you resize windows with, such as the ones
+of a hydra. Other changes are not remembered: a transient menu of 32
 lines does not make every later top window 32 lines tall.
 
 #+begin_src emacs-lisp
   (add-to-list 'auto-side-windows-resize-commands #'my/resize-window)
 #+end_src
 
-Each tab keeps its own sizes, with or without =tab-bar-mode=.  A new tab
+Each tab keeps its own sizes, with or without =tab-bar-mode=. A new tab
 starts from the options above, and nothing is kept across sessions.
 
 ** Moving a buffer between slots
@@ -262,17 +262,17 @@ starts from the options above, and nothing is kept across sessions.
 The move commands work with the slots that are there and make none.
 They swap two buffers: with a buffer in slot zero and another in slot
 three, one step takes the first to slot three and brings the second to
-slot zero.  Point follows the buffer, so a repeated key keeps moving the
-same one.  The package binds no key for them; bind what you like.
+slot zero. Point follows the buffer, so a repeated key keeps moving the
+same one. The package binds no key for them; bind what you like.
 
 A slot keeps the size you gave it, whichever buffer moves into it.
 
 =auto-side-windows-drag-slot= does the same with the mouse: press on the
 header line of a side window, drag to another side window of the same
-side, let go, and the two buffers change places.  A drag that ends
+side, let go, and the two buffers change places. A drag that ends
 anywhere else does nothing, because a slot belongs to one side.
 
-The package binds no key, this one included.  Bind it on the header
+The package binds no key, this one included. Bind it on the header
 line of your side windows, on the *press* rather than the drag:
 
 #+begin_src emacs-lisp
@@ -287,7 +287,7 @@ line of your side windows, on the *press* rather than the drag:
 #+end_src
 
 A binding on the drag does not work: Emacs resizes the window on the
-press and lets no drag event out.  Give the binding a part of the header
+press and lets no drag event out. Give the binding a part of the header
 line that has no other use, a stretch of space between the name and the
 buttons for example: the buttons keep their own keymaps.
 
@@ -301,13 +301,13 @@ this package are display actions:
 #+end_src
 
 =auto-side-windows-side= names the side, whatever the rules say, and
-=slot= names the slot.  The buffer keeps the side from then on.  The
+=slot= names the slot. The buffer keeps the side from then on. The
 key is not the =side= of an action alist, because other packages use
 =side= for their own purposes.
 
 The search for a free slot counts up from zero, so it never gives a
-buffer a negative slot.  =dirvish-side= asks for slot -1 and keeps it
-that way, without a rule of this package.  The one exception is
+buffer a negative slot. =dirvish-side= asks for slot -1 and keeps it
+that way, without a rule of this package. The one exception is
 =auto-side-windows-reuse-mode-window=: it reuses a window of the same
 major mode, whatever its slot.
 
@@ -318,7 +318,7 @@ buffers.
 
 *** Popper Integration
 
-[[https://github.com/karthink/popper][Popper]] can manage the side windows of this package.  Give Popper the
+[[https://github.com/karthink/popper][Popper]] can manage the side windows of this package. Give Popper the
 same lists that you gave =auto-side-windows=:
 
 #+begin_src emacs-lisp
@@ -393,8 +393,8 @@ the right.
 
 *** Shackle
 
-[[https://depp.brause.cc/shackle/][Shackle]] controls where a popup window appears.  It can also make a
-new frame, and it takes detailed window parameters.  Its rules are
+[[https://depp.brause.cc/shackle/][Shackle]] controls where a popup window appears. It can also make a
+new frame, and it takes detailed window parameters. Its rules are
 more powerful and longer.
 
 =auto-side-windows= does one thing: it sends a buffer to a side
@@ -402,16 +402,16 @@ window of the current frame, by name or by major mode.
 
 *** Popper
 
-[[https://github.com/karthink/popper][Popper]] manages the buffers that are popups already.  It shows, hides
+[[https://github.com/karthink/popper][Popper]] manages the buffers that are popups already. It shows, hides
 and cycles them.
 
-=auto-side-windows= says which buffers become side windows.  Popper
-can then manage these windows, see [[#popper-integration][Popper Integration]].  The two
+=auto-side-windows= says which buffers become side windows. Popper
+can then manage these windows, see [[#popper-integration][Popper Integration]]. The two
 packages work well together.
 
 *** Core Emacs (=display-buffer-alist=)
 
-=display-buffer-alist= is the mechanism under all of this.  It is
+=display-buffer-alist= is the mechanism under all of this. It is
 powerful, and its entries are hard to write.
 
 =auto-side-windows= writes one entry and answers it from options that
@@ -420,7 +420,7 @@ name a side.
 ** Bonus: Boxes around side windows
 
 [[https://github.com/MArpogaus/window-box][window-box]] draws a box around a window and keeps what your mode line
-and your header line show.  A predicate boxes each side window:
+and your header line show. A predicate boxes each side window:
 
 #+begin_src emacs-lisp
   (setopt window-box-window-predicate
@@ -431,12 +431,12 @@ and your header line show.  A predicate boxes each side window:
 ** Known Limits
 
 - The package answers for each buffer that Emacs displays, because
-  its entry in =display-buffer-alist= has the condition =t=.  A buffer
+  its entry in =display-buffer-alist= has the condition =t=. A buffer
   that matches no rule costs 50 to 60 microseconds.
 - A side of a frame holds as many windows as =window-sides-slots=
-  allows.  A new buffer replaces the buffer of the last slot when
+  allows. A new buffer replaces the buffer of the last slot when
   each slot is in use.
-- A rule holds for the whole frame.  The package has no rules for one
+- A rule holds for the whole frame. The package has no rules for one
   frame or for one project.
 
 ** How It Works
@@ -461,7 +461,7 @@ This package builds on the work and the writing of others:
 ** Use of LLM Coding Tools
 
 Parts of this package were written with the help of a large
-language model (LLM) coding assistant.  A person reviewed and tested
+language model (LLM) coding assistant. A person reviewed and tested
 every change before it was committed.
 
 ** License
