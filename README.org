@@ -112,6 +112,9 @@ with this configuration.
     (auto-side-windows-right-buffer-modes '(help-mode))
     (auto-side-windows-top-buffer-modes '(occur-mode))
     (auto-side-windows-bottom-buffer-modes '(eshell-mode shell-mode))
+    ;; A shell sets its major mode after it is shown, so a name rule
+    ;; catches it.
+    (auto-side-windows-bottom-buffer-names '("^\\*e?shell\\*"))
     ;; Sizes for the sides in use, kept once you change them.
     (auto-side-windows-right-width 46)
     (auto-side-windows-bottom-height 12)

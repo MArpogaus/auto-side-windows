@@ -27,6 +27,9 @@
   (auto-side-windows-right-buffer-modes '(help-mode))
   (auto-side-windows-top-buffer-modes '(occur-mode))
   (auto-side-windows-bottom-buffer-modes '(eshell-mode shell-mode))
+  ;; A shell sets its major mode after it is shown, so a name rule
+  ;; catches it.
+  (auto-side-windows-bottom-buffer-names '("^\\*e?shell\\*"))
   ;; Sizes for the sides in use, kept once you change them.
   (auto-side-windows-right-width 46)
   (auto-side-windows-bottom-height 12)
@@ -120,10 +123,7 @@
   (demo--hold 4.0)
   ;; 3. a shell lands at the bottom
   (select-window (window-main-window))
-  ;; `eshell' insists on the selected window, so create the buffer
-  ;; quietly and let the display rules place it.
-  (let ((buffer (save-window-excursion (eshell))))
-    (pop-to-buffer buffer))
+  (eshell)
   (demo--type "echo side windows")
   (eshell-send-input)
   (message nil)
