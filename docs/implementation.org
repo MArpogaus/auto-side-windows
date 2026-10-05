@@ -360,7 +360,8 @@ one entry that asks its own questions.
 - that the size along a side is preserved, holds when a window closes
   under =window-combination-resize=, and is preserved again after a
   resize; and that nothing is preserved where nothing is remembered
-- that a side allowing no slot shows nothing and runs no hook
+- that a side allowing no slot shows nothing and runs no after-display
+  hook
 - which action alist entries a record turns into, for a side and a slot,
   and that the entry gives the window its pixels back
 - that the switch forgets both the measuring and the giving back

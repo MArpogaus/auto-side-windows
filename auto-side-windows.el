@@ -291,9 +291,10 @@ An entry names a side, as in \\='((right . t))."
   :group 'auto-side-windows)
 
 (defcustom auto-side-windows-before-display-hook nil
-  "Hook run before a buffer goes to a side window.
-Each function is called with the buffer.  The window does not exist
-yet."
+  "Hook run before the package displays a buffer.
+Each function is called with the buffer.  It runs before a window is
+chosen: the buffer may go to a window that shows it already, an
+ordinary one among them, or to none where the side allows no slot."
   :type 'hook
   :group 'auto-side-windows)
 
