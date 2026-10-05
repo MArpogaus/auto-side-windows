@@ -247,11 +247,12 @@ drag still moves.
 
 What is measured is a change you make with one of the commands in
 =auto-side-windows-resize-commands=. The default list holds
-=enlarge-window=, =shrink-window= and their horizontal variants, and the
-commands that begin a drag of a divider, a mode line, a header line or,
-on Emacs 31, a tab line. Add the commands you resize windows with, such as the ones
-of a hydra. Other changes are not remembered: a transient menu of 32
-lines does not make every later top window 32 lines tall.
+=enlarge-window=, =shrink-window= and their horizontal variants, and
+the commands that begin a drag of a divider, a mode line, a header
+line or, on Emacs 31, a tab line. Add the commands you resize windows
+with, such as the ones of a hydra. Other changes are not remembered: a
+transient menu of 32 lines does not make every later top window 32
+lines tall.
 
 #+begin_src emacs-lisp
   (add-to-list 'auto-side-windows-resize-commands #'my/resize-window)
