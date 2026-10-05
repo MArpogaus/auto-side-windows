@@ -2,9 +2,9 @@
 
 ;; The animation is taken with the example configuration of the README,
 ;; and nothing else: the `use-package' form below is that example, with
-;; the package taken from this checkout instead of MELPA.  What follows
-;; it is presentation -- a frame of a fixed size, a font, visible
-;; dividers -- and the scripted session.
+;; the package taken from this checkout instead of MELPA.  After it
+;; comes the presentation: a frame of a fixed size, a font and visible
+;; dividers.  The scripted session follows.
 ;;
 ;;     Xvfb :99 -screen 0 1280x900x24 &
 ;;     DISPLAY=:99 emacs -Q -l demo/demo.el
