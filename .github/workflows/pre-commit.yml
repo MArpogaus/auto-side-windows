@@ -36,4 +36,7 @@ jobs:
         LOCAL_REPO: ${{ github.workspace }}
         RECIPE: (auto-side-windows :fetcher github :repo "MArpogaus/auto-side-windows")
         EXIST_OK: true
-      run: make -C ~/melpazoid
+      # Its `make' target first type-checks melpazoid itself with mypy,
+      # which the runner does not have; the check is the script.
+      working-directory: /home/runner/melpazoid
+      run: python3 melpazoid/melpazoid.py
