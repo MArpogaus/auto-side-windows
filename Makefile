@@ -1,4 +1,4 @@
-# Development tasks.  Run `make' to check everything, as the CI does.
+# Development tasks. Run `make' to check everything, as the CI does.
 #
 #   make compile   byte-compile, warnings are errors
 #   make lint      package-lint, the MELPA rules

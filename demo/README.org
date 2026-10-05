@@ -5,9 +5,9 @@ recorder: =demo.el= drives a scripted session and captures one frame
 per tenth of a second through =x-export-frames=.
 
 The configuration in the recording is the example configuration of the
-README, nothing more.  =demo.el= starts with that =use-package= form;
-only =:ensure= and =:load-path= differ, because the package comes from
-the checkout and not from MELPA.  The rest of the file is presentation:
+README, nothing more. =demo.el= starts with that =use-package= form.
+Only the load path and =:ensure= differ, because the package comes from
+the checkout and not from MELPA. The rest of the file is presentation:
 a frame of 1120 by 680 pixels, a 13 point font, window dividers, and
 the steps of the session.
 
@@ -16,7 +16,7 @@ the steps of the session.
   DISPLAY=:99 emacs -Q -l demo/demo.el    # writes demo/frames/f0001.png ...
 #+end_src
 
-Build the animation from the frames.  The final view is held for a
+Build the animation from the frames. The final view is held for a
 while, so the loop does not restart with a jump; the frames play a
 little faster than they were taken.
 

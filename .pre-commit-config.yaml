@@ -3,8 +3,8 @@
 #     pre-commit install --install-hooks -t pre-commit -t commit-msg -t pre-push
 #
 # The workflow of the same name runs them over every file, so a commit
-# made without the hooks is still checked.  A commit message is checked
-# too: `type: summary', a blank line, then the reasoning.  The licence
+# made without the hooks is still checked. A commit message is checked
+# too: `type: summary', a blank line, then the reasoning. The licence
 # is verbatim by definition, so the whitespace hooks leave it alone.
 #
 # melpazoid is not among them: it ships no command to call, and the
@@ -30,7 +30,7 @@ repos:
   - id: pretty-format-yaml
     args: [--autofix, --indent, '2']
 - repo: https://github.com/commitizen-tools/commitizen
-  rev: v4.17.0
+  rev: v4.19.0
   hooks:
   - id: commitizen
   - id: commitizen-branch

@@ -2,9 +2,9 @@
 
 ;; The animation is taken with the example configuration of the README,
 ;; and nothing else: the `use-package' form below is that example, with
-;; the package taken from this checkout instead of MELPA.  What follows
-;; it is presentation -- a frame of a fixed size, a font, visible
-;; dividers -- and the scripted session.
+;; the package taken from this checkout instead of MELPA.  After it
+;; comes the presentation: a frame of a fixed size, a font and visible
+;; dividers.  The scripted session follows.
 ;;
 ;;     Xvfb :99 -screen 0 1280x900x24 &
 ;;     DISPLAY=:99 emacs -Q -l demo/demo.el
@@ -14,9 +14,11 @@
 
 ;;; Code:
 (require 'use-package)
+(add-to-list 'load-path
+             (file-name-directory (directory-file-name
+                                   (file-name-directory load-file-name))))
 (use-package auto-side-windows
   :ensure nil
-  :load-path "/home/marcel/.emacs.d/packages/auto-side-windows"
   :custom
   ;; Buffers move to a side when `switch-to-buffer' shows them too.
   (switch-to-buffer-obey-display-actions t)
@@ -25,6 +27,9 @@
   (auto-side-windows-right-buffer-modes '(help-mode))
   (auto-side-windows-top-buffer-modes '(occur-mode))
   (auto-side-windows-bottom-buffer-modes '(eshell-mode shell-mode))
+  ;; A shell sets its major mode after it is shown, so a name rule
+  ;; catches it.
+  (auto-side-windows-bottom-buffer-names '("^\\*e?shell\\*"))
   ;; Sizes for the sides in use, kept once you change them.
   (auto-side-windows-right-width 46)
   (auto-side-windows-bottom-height 12)
@@ -118,10 +123,7 @@
   (demo--hold 4.0)
   ;; 3. a shell lands at the bottom
   (select-window (window-main-window))
-  ;; `eshell' insists on the selected window, so create the buffer
-  ;; quietly and let the display rules place it.
-  (let ((buffer (save-window-excursion (eshell))))
-    (pop-to-buffer buffer))
+  (eshell)
   (demo--type "echo side windows")
   (eshell-send-input)
   (message nil)
@@ -160,8 +162,10 @@
     (select-window window)
     (demo--say "make it wider" 1.5)
     (dotimes (_ 10)
-      (when (window-resizable window -1 t)
-        (window-resize window -1 t t))
+      (enlarge-window-horizontally 1)
+      ;; what the command loop does after a resize command
+      (let ((this-command 'enlarge-window-horizontally))
+        (auto-side-windows--note-resize))
       (demo--hold 0.1))
     (demo--hold 1.5)
     (demo--say "the side is gone, and comes back as you left it" 2.0)
