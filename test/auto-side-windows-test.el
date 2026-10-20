@@ -786,6 +786,39 @@ the selected side window stays."
       (should (eq (window-parameter (get-buffer-window a) 'window-side) 'right))
       (should (eq (window-buffer) a)))))
 
+(ert-deftest auto-side-windows-test-a-side-window-stays-dedicated ()
+  "A side window whose buffer `set-window-buffer' swapped is dedicated again.
+The tab bar fills a window of a killed buffer that way, and a side
+window without dedication took a file opened from it."
+  (let* ((panel (get-buffer-create "*asw-test panel*"))
+         (other (get-buffer-create "*asw-test other*"))
+         (window (display-buffer panel '(display-buffer-in-side-window (side . right)))))
+    (unwind-protect
+        (progn
+          (should (window-dedicated-p window))
+          (set-window-buffer window other)
+          (should-not (window-dedicated-p window))
+          (auto-side-windows--keep-dedicated (window-frame window))
+          (should (eq (window-dedicated-p window) 'side))
+          ;; an ordinary window is left alone
+          (should-not (window-dedicated-p (window-main-window))))
+      (when (window-live-p window) (delete-window window))
+      (kill-buffer panel)
+      (kill-buffer other))))
+
+(ert-deftest auto-side-windows-test-the-mode-keeps-side-windows-dedicated ()
+  "The mode adds the hook that dedicates side windows again, and takes it."
+  (let ((auto-side-windows-mode auto-side-windows-mode))
+    (unwind-protect
+        (progn
+          (auto-side-windows-mode 1)
+          (should (memq #'auto-side-windows--keep-dedicated
+                        (default-value 'window-buffer-change-functions)))
+          (auto-side-windows-mode -1)
+          (should-not (memq #'auto-side-windows--keep-dedicated
+                            (default-value 'window-buffer-change-functions))))
+      (auto-side-windows-mode -1))))
+
 (ert-deftest auto-side-windows-test-a-size-comes-from-its-option ()
   "The size of a side comes from its option, before its action alist.
 Both may name a size, and the option is the one that answers: it comes
