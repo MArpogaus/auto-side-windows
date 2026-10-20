@@ -4,7 +4,7 @@
 
 ;; Author: Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 ;; Assisted-by: Claude:claude-opus-5
-;; Version: 1.1
+;; Version: 1.1.1
 ;; Package-Requires: ((emacs "30.1"))
 ;; Keywords: convenience, windows, buffers
 ;; URL: https://github.com/MArpogaus/auto-side-windows
@@ -1029,6 +1029,16 @@ and give the part of the header line the map as its `local-map'."
     (auto-side-windows--swap-slots from to)))
 
 ;;;; Minor Mode
+(defun auto-side-windows--keep-dedicated (frame)
+  "Dedicate again each side window of FRAME that lost its dedication.
+`set-window-buffer' takes it, for example when the tab bar fills a
+window whose buffer was killed.  An undedicated side window can then
+take the buffer of a link that is opened from it."
+  (dolist (window (window-list frame 'nomini))
+    (when (and (window-parameter window 'window-side)
+               (not (window-dedicated-p window)))
+      (set-window-dedicated-p window 'side))))
+
 ;;;###autoload
 (define-minor-mode auto-side-windows-mode
   "Send buffers to side windows by the rules of this package.
@@ -1039,7 +1049,8 @@ of each side are asked for every buffer in
 `auto-side-windows--display-buffer'.
 
 It also notes a resize by the reader after each command, and measures
-the sides on every size change, for `auto-side-windows-remember-sizes'."
+the sides on every size change, for `auto-side-windows-remember-sizes'.
+A side window that loses its dedication is dedicated again."
   :global t
   :group 'auto-side-windows
   (if auto-side-windows-mode
@@ -1048,7 +1059,11 @@ the sides on every size change, for `auto-side-windows-remember-sizes'."
                      '(t auto-side-windows--display-buffer) t)
         (add-hook 'window-size-change-functions
                   #'auto-side-windows--measure)
-        (add-hook 'post-command-hook #'auto-side-windows--note-resize))
+        (add-hook 'post-command-hook #'auto-side-windows--note-resize)
+        (add-hook 'window-buffer-change-functions
+                  #'auto-side-windows--keep-dedicated))
+    (remove-hook 'window-buffer-change-functions
+                 #'auto-side-windows--keep-dedicated)
     (remove-hook 'window-size-change-functions
                  #'auto-side-windows--measure)
     (remove-hook 'post-command-hook #'auto-side-windows--note-resize)
